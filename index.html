@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>SeatGeek VR</title>
+    <script src="//js.leapmotion.com/leap-0.6.4.js"></script>
+</head>
+<body>
+    <script type="text/javascript">
+        var controller = Leap.loop({enableGestures: true}, function(frame){
+        });
+
+        controller.on("gesture", function(gesture){
+          console.log(gesture.type);
+        });
+    </script>
+</body>
+</html>
