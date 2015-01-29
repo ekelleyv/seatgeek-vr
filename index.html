@@ -4,15 +4,17 @@
     <meta charset="utf-8">
     <title>SeatGeek VR</title>
     <script src="//js.leapmotion.com/leap-0.6.4.js"></script>
+    <script src="./leap.screen-position.js"></script>
+    <script src="./leap.js"></script>
+    <style type="text/css">
+        .sprite {
+            width: 20px;
+            height: 20px;
+            background: #F00;
+            position: absolute;
+        }
+    </style>
 </head>
 <body>
-    <script type="text/javascript">
-        var controller = Leap.loop({enableGestures: true}, function(frame){
-        });
-
-        controller.on("gesture", function(gesture){
-          console.log(gesture.type);
-        });
-    </script>
 </body>
 </html>
