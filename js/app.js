@@ -348,7 +348,6 @@ World.prototype.build_stadium =  function () {
         });
 
         var full_shape = new THREE.Geometry();
-        console.log(section);
         if (section.rows.length == 0) continue;
         for (i in section.rows) {
             var row = section.rows[i];
@@ -361,8 +360,6 @@ World.prototype.build_stadium =  function () {
             });
             THREE.GeometryUtils.merge(full_shape, geometry);
         }
-
-        console.log('full shape', full_shape);
 
 
         var section_shape = this.convert_shape(section.points);
