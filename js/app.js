@@ -350,7 +350,7 @@ World.prototype.build_stadium =  function () {
     this.scene.add(this.stadium_group);
 
     var geometry = new THREE.PlaneBufferGeometry( 44, 44, 20 );
-    var url = "/yankees_field.png";
+    var url = "yankees_field.png";
     var texture = THREE.ImageUtils.loadTexture( url );
 
 
