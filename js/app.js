@@ -150,7 +150,7 @@ World.prototype.bind_events = function() {
             that.state = 'display-seatview';
         } else if (e.keyCode == 40) { // down
             e.preventDefault();
-            that.remove_seatview();
+            that.remove_seatview(true);
         } else if (e.keyCode == 13) { // enter
 
         }
@@ -411,14 +411,14 @@ World.prototype.display_seatview = function(section_name) {
         {opacity : 0.95},
         500
     ).start().onComplete(function() {
-        that.remove_seatview();
+        that.remove_seatview(false);
         that.selected_seatview = plane;
     });
 
     this.dolly.add( plane );
 };
 
-World.prototype.remove_seatview = function() {
+World.prototype.remove_seatview = function(destroy) {
     var that = this;
     if (this.selected_seatview) {
         var seatview = this.selected_seatview;
@@ -429,6 +429,7 @@ World.prototype.remove_seatview = function() {
             500
         ).start().onComplete(function() {
             that.dolly.remove(seatview);
+            if (destroy) that.selected_seatview = false;
         });
     }
 }
