@@ -257,6 +257,7 @@ World.prototype.color_for_bucket = function(bucket) {
         "#609d0d",
         "#518202"
     ];
+    colors.reverse();
 
     return colors[bucket];
 };
@@ -264,6 +265,7 @@ World.prototype.color_for_bucket = function(bucket) {
 
 World.prototype.build_stadium =  function () {
     this.stadium_group = new THREE.Object3D();
+    this.sorted_mapdata = [];
 
     for (var section_name in this.mapdata) {
         var section = this.mapdata[section_name];
@@ -284,8 +286,18 @@ World.prototype.build_stadium =  function () {
         section.position.x = (section.center[0] - 500)/10;
         section.position.y = (500 - section.center[1])/10;
         this.stadium_group.add(object);
+
+        section.object = object;
+        section.name = section_name;
+        this.sorted_mapdata.push(section);
     }
     this.scene.add(this.stadium_group);
+
+    this.sorted_mapdata.sort(function(a, b) {
+        if (!b.max_dq) return -1;
+        if (!a.max_dq) return  1;
+        return b.max_dq - a.max_dq;
+    });
 };
 
 World.prototype.build_title =  function () {
@@ -395,15 +407,55 @@ World.prototype.handle_state = function(time) {
             )
             .easing( TWEEN.Easing.Quadratic.InOut ).start()
             .onComplete(function() {
-                that.state = "lower-overhead";
-                this.state_locked = false;
+                that.selected_section = that.sorted_mapdata[1];
+                that.state = "jump-to-section";
+                that.state_locked = false;
             });
     }
-    if (this.state == "lower-overhead") {
-        // this.display_seatview("grandstand-level-413");
-    }
-    if (this.state == "seatview-detail") {
-    }
+    if (this.state == "jump-to-section") {
+        var pos = this.selected_section.position;
+        console.log(this.selected_section);
+
+        var origin     = new THREE.Vector3(0,0,0),
+            line       = new THREE.Line3(pos, origin),
+            distance   = line.distance(),
+            camera_pos = line.at(5/distance);
+        camera_pos.setZ(pos.z + 4);
+        console.log('camera', camera_pos);
+
+        var deltaX = camera_pos.x - pos.x;
+        var deltaY = camera_pos.y - pos.y;
+        var deltaZ = camera_pos.z - pos.z;
+        var rotateX = Math.atan(deltaY / deltaZ) + Math.PI/2;
+        var rotateY = Math.atan(deltaZ / deltaX) + Math.PI/2;
+
+        this.state_locked = true;
+        this.tween = new TWEEN.Tween(
+            this.dolly.position
+        ).to(
+            camera_pos,
+            3000
+        )
+        .easing( TWEEN.Easing.Quadratic.InOut ).start()
+        .onComplete(function() {
+            that.state = 'display-seatview';
+            that.state_locked = false;
+        });
+
+        new TWEEN.Tween(
+            this.dolly.rotation
+        ).to(
+            {
+                x: rotateX,
+                y: rotateY
+            },
+            3000
+        ).easing( TWEEN.Easing.Quadratic.InOut ).start();
+     }
+     if (this.state == "display-seatview") {
+        this.display_seatview("grandstand-level-413");
+     }
+     // this.display_seatview("grandstand-level-413");
 };
 
 
