@@ -19,7 +19,7 @@ World.prototype.init = function() {
     this.change_mode("vr");
 
     this.state = "start";
-    this.animation_speed = 0.1;
+    this.animation_speed = 1;
 
     this.load_geo();
     this.load_listings();
@@ -67,7 +67,18 @@ World.prototype.process_mapdata = function() {
         this.mapdata[section_name] = {
             center : section.center,
             points : section.points[0],
-            listings: []
+            listings: [],
+            type: 'section',
+            rows: []
+        }
+        for (var row_name in section.rows) {
+            var row = section.rows[row_name];
+            this.mapdata[section_name].rows.push({
+                center : row.center,
+                points : row.points[0],
+                listings: [],
+                type: 'row'
+            });
         }
     }
 
@@ -313,20 +324,46 @@ World.prototype.build_stadium =  function () {
     for (var section_name in this.mapdata) {
         var section = this.mapdata[section_name];
         var building_material = new THREE.MeshPhongMaterial({
-            color: this.color_for_bucket(section.max_dq_bucket)
+            color: this.color_for_bucket(section.type == 'section' ? section.max_dq_bucket : section.section.max_dq_bucket),
         });
-        var shape = this.convert_shape(section.points);
+
+        var full_shape = false;
+        console.log(section);
+        if (section.rows.length == 0) continue;
+        for (i in section.rows) {
+            var row = section.rows[i];
+            var row_shape = this.convert_shape(row.points);
+            var distance = Math.sqrt((this.geo_data.center[0] - row.center[0])*(this.geo_data.center[0] - row.center[0]) + (this.geo_data.center[1] - row.center[1])*(this.geo_data.center[1] - section.center[1]));
+
+            var geometry = row_shape.extrude({
+                amount: Math.pow(distance/200, 3),
+                bevelEnabled: false
+            });
+            var mesh = new THREE.Mesh(geometry, building_material);
+
+            if (!full_shape) {
+                full_shape = new ThreeBSP(geometry);
+            } else {
+                full_shape = full_shape.union(new ThreeBSP(geometry));
+            }
+        }
+
+        console.log('full shape', full_shape);
+
+
+        var section_shape = this.convert_shape(section.points);
 
         // object.position.z = this.mapdata[section_name].max_dq_bucket|| 0;
         var distance = Math.sqrt((this.geo_data.center[0] - section.center[0])*(this.geo_data.center[0] - section.center[0]) + (this.geo_data.center[1] - section.center[1])*(this.geo_data.center[1] - section.center[1]))
 
-        var geometry = shape
-          .extrude({
-            amount: Math.pow(distance/200, 3),
-            bevelEnabled: false
-          });
+        // var geometry = shape
+        //   .extrude({
+        //     amount: Math.pow(distance/200, 3),
+        //     bevelEnabled: false
+        //   });
 
-        var object = new THREE.Mesh(geometry, building_material);
+        var object = full_shape.toMesh(building_material);
+        //var object = new THREE.Mesh(full_shape, building_material);
 
         // object.position.z = Math.pow(distance/100, 2);
 
@@ -339,6 +376,7 @@ World.prototype.build_stadium =  function () {
 
         section.object = object;
         section.name = section_name;
+        section.extrude = Math.pow(distance/200, 3);
         if (section.seatview) this.sorted_mapdata.push(section);
     }
     this.scene.add(this.stadium_group);
@@ -439,12 +477,9 @@ World.prototype.build_label = function (label) {
         object.position.y = -1.9;
         object.position.x = -2.2;
 
-        var tween = new TWEEN.Tween(
-            material
-        ).to(
-            {opacity : 1},
-            500
-        ).start();
+        var tween = new TWEEN.Tween(material)
+            .to({opacity : 1}, 500)
+            .start();
 
         that.label = object;
         that.dolly.add(that.label);
@@ -456,15 +491,13 @@ World.prototype.remove_label = function (fn) {
     if (!fn) fn = function() {};
     var that = this;
     if (this.label) {
-        var tween = new TWEEN.Tween(
-            this.label.material
-        ).to(
-            {opacity : 0},
-            500
-        ).start().onComplete(function() {
-            that.dolly.remove(that.label);
-            fn.call(that);
-        });
+        var tween = new TWEEN.Tween(this.label.material)
+            .to({opacity : 0}, 500)
+            .start()
+            .onComplete(function() {
+                that.dolly.remove(that.label);
+                fn.call(that);
+            });
     } else {
         fn.call(this);
     }
@@ -479,8 +512,8 @@ World.prototype.remove_label = function (fn) {
 
 World.prototype.display_seatview = function() {
     var that = this;
-    if (!this.enable_seatview) return;
     this.remove_seatview(function() {
+        if (!that.enable_seatview) return;
         if (!that.selected_section.seatview) return;
         var geometry = new THREE.PlaneBufferGeometry( 6.4, 4.8, 5 );
         var split = that.selected_section.name.split('-');
@@ -539,47 +572,46 @@ World.prototype.remove_seatview = function(fn) {
 
 World.prototype.handle_state = function(time) {
     var that = this;
-    if (this.state_locked) {
-            return;
-        }
+    if (this.state_locked) return;
     if (this.state == "start") {
         this.dolly.position.set(0, -1200, 50);
         this.state = "title"
     }
     if (this.state == "title") {
         this.state_locked = true;
-        this.tween = new TWEEN.Tween(
-            this.dolly.position
-        ).to(
-            {x: 0, y: 0, z: 200},
-            4000*this.animation_speed
-        )
-        .easing( TWEEN.Easing.Cubic.InOut ).delay(2000).start()
-        .onComplete(function() {
-            that.state = "overhead";
-            that.state_locked = false;
-        });
+        this.tween = new TWEEN.Tween(this.dolly.position)
+            .to({
+                x: 0, 
+                y: 0,
+                z: 200
+            }, 4000*this.animation_speed)
+            .easing( TWEEN.Easing.Cubic.InOut )
+            .delay(2000)
+            .start()
+            .onComplete(function() {
+                that.state = "overhead";
+                that.state_locked = false;
+            });
 
-        var tween = new TWEEN.Tween(
-            this.dolly.rotation
-        ).to(
-            {x : 0},
-            4000*this.animation_speed
-        )
-        .easing( TWEEN.Easing.Cubic.InOut ).delay(2000).start();
+        var tween = new TWEEN.Tween(this.dolly.rotation)
+            .to({x : 0}, 4000*this.animation_speed)
+            .easing( TWEEN.Easing.Cubic.InOut )
+            .delay(2000)
+            .start();
     }
     if (this.state == "overhead") {
         if (this.state_locked) {
             return;
         }
         this.state_locked = true;
-            this.tween = new TWEEN.Tween(
-                this.dolly.position
-            ).to(
-                {x: 0, y: 0, z: 100},
-                1000*this.animation_speed
-            )
-            .easing( TWEEN.Easing.Cubic.InOut ).start()
+        this.tween = new TWEEN.Tween(this.dolly.position)
+            .to({
+                x: 0,
+                y: 0,
+                z: 100
+            }, 1000*this.animation_speed)
+            .easing( TWEEN.Easing.Cubic.InOut )
+            .start()
             .onComplete(function() {
                 that.selected_section = that.sorted_mapdata[1];
                 that.state = "jump-to-section";
@@ -599,32 +631,24 @@ World.prototype.handle_state = function(time) {
 
         camera_pos.setZ(this.selected_section.position.z + 3);
 
-        this.tween = new TWEEN.Tween(
-            this.dolly.position
-        ).to(
-            camera_pos,
-            1000
-        )
-        .easing( TWEEN.Easing.Cubic.InOut ).start()
-        .onComplete(function() {
-            that.animate_selected_section(true);
-            that.state = 'idle';
-            that.state_locked = false;
-        });
+        this.tween = new TWEEN.Tween(this.dolly.position)
+            .to(camera_pos, 1000)
+            .easing( TWEEN.Easing.Cubic.InOut )
+            .start()
+            .onComplete(function() {
+                that.animate_selected_section(true);
+                that.state = 'idle';
+                that.state_locked = false;
+            });
 
-        new TWEEN.Tween(
-            this.dolly.rotation
-        ).to(
-            {
+        new TWEEN.Tween(this.dolly.rotation)
+            .to({
                 x: Math.PI/2,
                 y: Math.atan((that.selected_section.position.y - that.dolly.position.y)/(that.selected_section.position.x - that.dolly.position.x)) + Math.PI/2
-            },
-            1000
-        ).easing( TWEEN.Easing.Cubic.InOut ).start();
+            }, 1000)
+            .easing( TWEEN.Easing.Cubic.InOut )
+            .start();
      }
-
-     // Hover selected section
-
 };
 
 World.prototype.animate_selected_section = function (restart) {
