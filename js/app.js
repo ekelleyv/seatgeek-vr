@@ -221,6 +221,7 @@ World.prototype.init_camera = function() {
 
     this.dolly.add(camera);
 
+
     this.scene.add(this.dolly);
 
     return camera;
