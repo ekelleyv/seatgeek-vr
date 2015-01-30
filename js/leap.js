@@ -7,7 +7,7 @@
   var options = {
     // Threshold velocities to trigger gestures
     // Lower = more sensitive
-    xThreshold: 1000,
+    xThreshold: 600,
     yThreshold: 1000,
     zThreshold: 1300
   };

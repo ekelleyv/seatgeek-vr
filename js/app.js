@@ -149,6 +149,12 @@ World.prototype.bind_events = function() {
 
         }
     });
+    gestures.bind('left', function() {
+        that.go_to_previous_deal();
+    });
+    gestures.bind('right', function() {
+        that.go_to_next_deal();
+    });
 };
 
 World.prototype.go_to_previous_deal = function() {
@@ -321,7 +327,9 @@ World.prototype.build_stadium =  function () {
 
         section.object = object;
         section.name = section_name;
-        this.sorted_mapdata.push(section);
+        if (section.seatview) {
+            this.sorted_mapdata.push(section);
+        }
     }
     this.scene.add(this.stadium_group);
 
@@ -373,15 +381,19 @@ World.prototype.render = function(time) {
 };
 
 World.prototype.display_seatview = function(section_name) {
-    if (this.selected_seatview) {
-        return;
-    }
+    if (this.selected_seatview) this.selected_seatview.remove();
+    if (!this.mapdata[section_name].seatview) return;
     var geometry = new THREE.PlaneBufferGeometry( 6.4, 4.8, 5 );
-    var url = "/img/" + this.mapdata[section_name].seatview.split("-").pop();
+    var split = section_name.split('-');
+    var key = split[split.length - 1];
+    if (key.length == 1) {
+        key = split[split.length - 2] + key; // support 227b, etc.
+    }
+    var url = "/img/" + key + '.jpg';
     var texture = THREE.ImageUtils.loadTexture( url );
 
 
-    var material = new THREE.MeshPhongMaterial( {map : texture, opacity: 0, transparent: true} );
+    var material = new THREE.MeshBasicMaterial( {map : texture, opacity: 0, transparent: true} );
 
     var tween = new TWEEN.Tween(
         material
@@ -476,7 +488,7 @@ World.prototype.handle_state = function(time) {
         )
         .easing( TWEEN.Easing.Cubic.InOut ).start()
         .onComplete(function() {
-            // that.state = 'display-seatview';
+            that.state = 'display-seatview';
             that.state_locked = false;
         });
 
@@ -491,8 +503,9 @@ World.prototype.handle_state = function(time) {
         ).easing( TWEEN.Easing.Cubic.InOut ).start();
      }
      if (this.state == "display-seatview") {
-        this.display_seatview("grandstand-level-413");
+        this.display_seatview(this.selected_section.name);
         that.dolly.up.set(0, 0, 1);
+        this.state = 'idle';
      }
      // this.display_seatview("grandstand-level-413");
 };
