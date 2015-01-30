@@ -34,9 +34,9 @@
     this.gestures = [];
 
     this.init = function() {
-      this.el = document.createElement('div');
-      this.el.className = 'sprite';
-      document.body.appendChild(this.el);
+      // this.el = document.createElement('div');
+      // this.el.className = 'sprite';
+      // document.body.appendChild(this.el);
     };
     this.init();
 
@@ -47,10 +47,10 @@
     };
 
     this.setTransform = function() {
-      var pos = this.properties.screenPosition();
-      this.el.style.left = pos[0] - 10 + 'px';
-      this.el.style.top  = pos[1] - 10 + 'px';
-      this.el.style.transform = 'rotate(' + -this.properties.roll() + 'rad)';
+      // var pos = this.properties.screenPosition();
+      // this.el.style.left = pos[0] - 10 + 'px';
+      // this.el.style.top  = pos[1] - 10 + 'px';
+      // this.el.style.transform = 'rotate(' + -this.properties.roll() + 'rad)';
     };
 
     // Detect intentional movements and interpet
@@ -187,23 +187,23 @@
 //
 ////////////////////////////////////////////
 
-  gestures.bind('down', function(hand, intent) {
-    if (hand.roll() > 1 || hand.roll() < -1) {
-      console.log('KARATE CHOP!!');
-    } else {
-      console.log('HULK SLAM');
-    }
-  });
+  // gestures.bind('down', function(hand, intent) {
+  //   if (hand.roll() > 1 || hand.roll() < -1) {
+  //     console.log('KARATE CHOP!!');
+  //   } else {
+  //     console.log('HULK SLAM');
+  //   }
+  // });
 
-  gestures.bind('up', function(hand, intent) {
-    if (hand.pinchStrength > .80) {
-      console.log('oh just buyin some tickets');
-    }
-  });
+  // gestures.bind('up', function(hand, intent) {
+  //   if (hand.pinchStrength > .80) {
+  //     console.log('oh just buyin some tickets');
+  //   }
+  // });
 
-  gestures.bind('left-right-left,right-left-right', function(hand) {
-    console.log('bitch slaaaaap');
-  });
+  // gestures.bind('left-right-left,right-left-right', function(hand) {
+  //   console.log('bitch slaaaaap');
+  // });
 
 
 ////////////////////////////////////////////
@@ -215,8 +215,8 @@
 //
 ////////////////////////////////////////////
 
-  gestures.bind('far-near', function(gestures) {
-    if (gestures[0].hand.grabStrength > .80) {
-      console.log('HULK SMASH');
-    }
-  });
+  // gestures.bind('far-near', function(gestures) {
+  //   if (gestures[0].hand.grabStrength > .80) {
+  //     console.log('HULK SMASH');
+  //   }
+  // });
