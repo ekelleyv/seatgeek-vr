@@ -12,21 +12,19 @@ World.prototype.init = function() {
 
     this.vr_effect = new THREE.VREffect( this.renderer );
     this.vr_controls = new THREE.VRControls( this.camera );
-
-
-
     this.mono_controls = new THREE.OrbitControls( this.camera );
 
     this.change_mode("vr");
 
     this.state = "start";
-
     this.animation_speed = 0.1;
 
     this.load_geo();
     this.load_listings();
 
     this.bind_events();
+    this.enable_seatview = false;
+    this.selected_seatview = null;
 
     requestAnimationFrame(this.render.bind(this));
 
@@ -147,10 +145,12 @@ World.prototype.bind_events = function() {
             that.go_to_next_deal();
         } else if (e.keyCode == 38) { // up
             e.preventDefault();
-            that.state = 'display-seatview';
+            that.enable_seatview = true;
+            that.display_seatview();
         } else if (e.keyCode == 40) { // down
             e.preventDefault();
-            that.remove_seatview(true);
+            that.enable_seatview = false;
+            that.remove_seatview();
         } else if (e.keyCode == 13) { // enter
 
         }
@@ -279,33 +279,33 @@ World.prototype.init_camera = function() {
     camera.position.set( 0, 0, 0);
 
     this.dolly = new THREE.Group();
-
     this.dolly.rotateX(Math.PI/2);
-
-
     this.dolly.add(camera);
-
 
     this.scene.add(this.dolly);
 
     return camera;
-}
+};
+
+
+////////////////////////////////////////////
+//
+// Process data
+//
+////////////////////////////////////////////
 
 World.prototype.color_for_bucket = function(bucket) {
     var colors = [
-        "#2378c5",
-        "#e40909",
-        "#f64f06",
-        "#ed860c",
-        "#91b308",
+        "#518202",
         "#609d0d",
-        "#518202"
+        "#91b308",
+        "#ed860c",
+        "#f64f06",
+        "#e40909",
+        "#2378c5"
     ];
-    colors.reverse();
-
     return colors[bucket];
 };
-
 
 World.prototype.build_stadium =  function () {
     this.stadium_group = new THREE.Object3D();
@@ -313,7 +313,9 @@ World.prototype.build_stadium =  function () {
 
     for (var section_name in this.mapdata) {
         var section = this.mapdata[section_name];
-        var building_material = new THREE.MeshPhongMaterial({color : this.color_for_bucket(section.max_dq_bucket)});
+        var building_material = new THREE.MeshPhongMaterial({
+            color: this.color_for_bucket(section.max_dq_bucket)
+        });
         var shape = this.convert_shape(section.points);
         var geometry = shape
           .extrude({
@@ -333,9 +335,7 @@ World.prototype.build_stadium =  function () {
 
         section.object = object;
         section.name = section_name;
-        if (section.seatview) {
-            this.sorted_mapdata.push(section);
-        }
+        if (section.seatview) this.sorted_mapdata.push(section);
     }
     this.scene.add(this.stadium_group);
 
@@ -345,6 +345,43 @@ World.prototype.build_stadium =  function () {
         return b.max_dq - a.max_dq;
     });
 };
+
+World.prototype.convert_shape = function (input_points) {
+    var pts = [];
+    for (var i = 0; i < input_points.length; i++) {
+        pts.push(new THREE.Vector2((input_points[i][0]-500)/10, (500 - input_points[i][1])/10));
+    }
+    var shape = new THREE.Shape();
+    shape.fromPoints(pts);
+    return shape;
+},
+
+
+////////////////////////////////////////////
+//
+// Render the scene
+//
+////////////////////////////////////////////
+
+World.prototype.render = function(time) {
+    requestAnimationFrame( this.render.bind(this) );
+
+    TWEEN.update(time);
+
+    if (typeof this.controls.update == 'function') {
+        this.controls.update();
+    }
+    this.handle_state(time);
+
+    this.effect.render( this.scene, this.camera );
+};
+
+
+////////////////////////////////////////////
+//
+// Section Labels
+//
+////////////////////////////////////////////
 
 World.prototype.build_title =  function () {
     var geometry = new THREE.TextGeometry("SEATGEEK VR", {size: 50, height: 5, font: "helvetiker", weight: "bold"});
@@ -363,62 +400,100 @@ World.prototype.build_title =  function () {
     this.scene.add(object);
 };
 
-World.prototype.convert_shape = function (input_points) {
-    var pts = [];
-    for (var i = 0; i < input_points.length; i++) {
-        pts.push(new THREE.Vector2((input_points[i][0]-500)/10, (500 - input_points[i][1])/10));
-    }
-    var shape = new THREE.Shape();
-    shape.fromPoints(pts);
-    return shape;
-},
-
-World.prototype.render = function(time) {
-    requestAnimationFrame( this.render.bind(this) );
-
-    TWEEN.update(time);
-
-    if (typeof this.controls.update == 'function') {
-        this.controls.update();
-    }
-    this.handle_state(time);
-
-    this.effect.render( this.scene, this.camera );
-};
-
-World.prototype.display_seatview = function(section_name) {
+World.prototype.build_label = function (label) {
     var that = this;
-    if (!this.mapdata[section_name].seatview) return;
-    var geometry = new THREE.PlaneBufferGeometry( 6.4, 4.8, 5 );
-    var split = section_name.split('-');
-    var key = split[split.length - 1];
-    if (key.length == 1) {
-        key = split[split.length - 2] + key; // support 227b, etc.
-    }
-    var url = "/img/" + key + '.jpg';
-    var texture = THREE.ImageUtils.loadTexture( url );
+    this.remove_label(function() {
+        label = label.replace(/-/g, ' ');
+        label = label.replace(/(?:^|\s)\S/g, function(a) { return a.toUpperCase(); })
+        var geometry = new THREE.TextGeometry(label, {
+            size: .15,
+            height: .02,
+            font: 'helvetiker',
+            weight: 'bold'
+        });
+        var material = new THREE.MeshBasicMaterial({
+            opacity: 0,
+            transparent: true
+        });
+        var object = new THREE.Mesh(geometry, material);
+        object.position.z = -2.8;
+        object.position.y = -1.9;
+        object.position.x = -2.2;
 
+        var tween = new TWEEN.Tween(
+            material
+        ).to(
+            {opacity : 1},
+            500
+        ).start();
 
-    var material = new THREE.MeshBasicMaterial( {map : texture, opacity: 0, transparent: true} );
+        that.label = object;
+        that.dolly.add(that.label);
+    })
 
-    var plane = new THREE.Mesh( geometry, material );
-
-    plane.position.z = -4;
-
-    var tween = new TWEEN.Tween(
-        material
-    ).to(
-        {opacity : 0.95},
-        500
-    ).start().onComplete(function() {
-        that.remove_seatview(false);
-        that.selected_seatview = plane;
-    });
-
-    this.dolly.add( plane );
 };
 
-World.prototype.remove_seatview = function(destroy) {
+World.prototype.remove_label = function (fn) {
+    if (!fn) fn = function() {};
+    var that = this;
+    if (this.label) {
+        var tween = new TWEEN.Tween(
+            this.label.material
+        ).to(
+            {opacity : 0},
+            500
+        ).start().onComplete(function() {
+            that.dolly.remove(that.label);
+            fn.call(that);
+        });
+    } else {
+        fn.call(this);
+    }
+};
+
+
+////////////////////////////////////////////
+//
+// Seat Views
+//
+////////////////////////////////////////////
+
+World.prototype.display_seatview = function() {
+    var that = this;
+    if (!this.enable_seatview) return;
+    this.remove_seatview(function() {
+        if (!that.selected_section.seatview) return;
+        var geometry = new THREE.PlaneBufferGeometry( 6.4, 4.8, 5 );
+        var split = that.selected_section.name.split('-');
+        var key = split[split.length - 1];
+        if (key.length == 1) key = split[split.length - 2] + key;
+        var url = "/img/" + key + '.jpg';
+        var texture = THREE.ImageUtils.loadTexture( url );
+
+        var material = new THREE.MeshBasicMaterial({
+            map: texture,
+            opacity: 0,
+            transparent: true
+        });
+
+        var plane = new THREE.Mesh( geometry, material );
+        plane.position.z = -4;
+
+        var tween = new TWEEN.Tween(
+            material
+        ).to(
+            {opacity : 0.95},
+            500
+        ).start().onComplete(function() {
+            that.selected_seatview = plane;
+        });
+
+        that.dolly.add( plane );
+    });
+};
+
+World.prototype.remove_seatview = function(fn) {
+    if (!fn) fn = function() {};
     var that = this;
     if (this.selected_seatview) {
         var seatview = this.selected_seatview;
@@ -429,10 +504,19 @@ World.prototype.remove_seatview = function(destroy) {
             500
         ).start().onComplete(function() {
             that.dolly.remove(seatview);
-            if (destroy) that.selected_seatview = false;
+            fn.call(that);
         });
+    } else {
+        fn.call(this);
     }
 }
+
+
+////////////////////////////////////////////
+//
+// Camera State Management
+//
+////////////////////////////////////////////
 
 World.prototype.handle_state = function(time) {
     var that = this;
@@ -485,19 +569,18 @@ World.prototype.handle_state = function(time) {
             });
     }
     if (this.state == "jump-to-section") {
-        if (this.state_locked) {
-            return;
-        }
-        var pos = this.selected_section.position;
-
+        if (this.state_locked) return;
+        this.state_locked = true;
+        this.build_label(this.selected_section.name + ', $' + this.selected_section.max_dq_price);
+        this.display_seatview(this.selected_section.name);
 
         var origin     = new THREE.Vector3(0,0,0),
-            line       = new THREE.Line3(pos, origin),
+            line       = new THREE.Line3(this.selected_section.position, origin),
             distance   = line.distance(),
             camera_pos = line.at(10/distance);
-        camera_pos.setZ(pos.z + 3);
 
-        this.state_locked = true;
+        camera_pos.setZ(this.selected_section.position.z + 3);
+
         this.tween = new TWEEN.Tween(
             this.dolly.position
         ).to(
@@ -506,13 +589,8 @@ World.prototype.handle_state = function(time) {
         )
         .easing( TWEEN.Easing.Cubic.InOut ).start()
         .onComplete(function() {
-            if (that.selected_seatview) {
-                that.state = 'display-seatview';
-            } else {
-                that.state = 'idle';
-            }
+            that.state = 'idle';
             that.state_locked = false;
-            // that.dolly.rotation.set( rotateX, rotateY, 0);
         });
 
         new TWEEN.Tween(
@@ -525,12 +603,6 @@ World.prototype.handle_state = function(time) {
             1000
         ).easing( TWEEN.Easing.Cubic.InOut ).start();
      }
-     if (this.state == "display-seatview") {
-        this.display_seatview(this.selected_section.name);
-        this.state = 'idle';
-        // this.dolly.rotation.set( 0, Math.PI/2, Math.PI/2);
-     }
-     // this.display_seatview("grandstand-level-413");
 };
 
 
