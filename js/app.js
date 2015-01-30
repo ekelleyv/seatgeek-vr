@@ -412,6 +412,7 @@ World.prototype.handle_state = function(time) {
             .easing( TWEEN.Easing.Cubic.InOut ).start()
             .onComplete(function() {
                 that.selected_section = that.sorted_mapdata[1];
+                that.selected_section.object.material = new THREE.MeshNormalMaterial();
                 that.state = "jump-to-section";
                 that.state_locked = false;
             });
@@ -422,18 +423,12 @@ World.prototype.handle_state = function(time) {
         }
         var pos = this.selected_section.position;
 
+
         var origin     = new THREE.Vector3(0,0,0),
             line       = new THREE.Line3(pos, origin),
             distance   = line.distance(),
-            camera_pos = line.at(5/distance);
-        camera_pos.setZ(pos.z + 4);
-        console.log('camera', camera_pos);
-
-        var deltaX = camera_pos.x - pos.x;
-        var deltaY = camera_pos.y - pos.y;
-        var deltaZ = camera_pos.z - pos.z;
-        var rotateX = Math.atan(deltaY / deltaZ) + Math.PI/2;
-        var rotateY = Math.atan(deltaZ / deltaX) + Math.PI/2;
+            camera_pos = line.at(10/distance);
+        camera_pos.setZ(pos.z + 3);
 
         this.state_locked = true;
         this.tween = new TWEEN.Tween(
@@ -444,23 +439,24 @@ World.prototype.handle_state = function(time) {
         )
         .easing( TWEEN.Easing.Cubic.InOut ).start()
         .onComplete(function() {
-            // that.state = 'display-seatview';
+            that.state = 'display-seatview';
             that.state_locked = false;
+            // that.dolly.rotation.set( rotateX, rotateY, 0);
         });
 
         new TWEEN.Tween(
             this.dolly.rotation
         ).to(
             {
-                x: rotateX,
-                y: rotateY
+                x: Math.PI/2,
+                y: Math.atan((that.selected_section.position.y - that.dolly.position.y)/(that.selected_section.position.x - that.dolly.position.x)) + Math.PI/2
             },
             1000
         ).easing( TWEEN.Easing.Cubic.InOut ).start();
      }
      if (this.state == "display-seatview") {
-        this.display_seatview("grandstand-level-413");
-        that.dolly.up.set(0, 0, 1);
+        this.display_seatview(that.selected_section.name);
+        // this.dolly.rotation.set( 0, Math.PI/2, Math.PI/2);
      }
      // this.display_seatview("grandstand-level-413");
 };
