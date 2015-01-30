@@ -21,7 +21,7 @@ World.prototype.init = function() {
 
     this.state = "start";
 
-    this.animation_speed = 0.1;
+    this.animation_speed = 1;//0.1;
 
     this.load_geo();
     this.load_listings();
@@ -241,6 +241,7 @@ World.prototype.color_for_bucket = function(bucket) {
         "#609d0d",
         "#518202"
     ];
+    colors.reverse();
 
     return colors[bucket];
 };
@@ -363,7 +364,7 @@ World.prototype.handle_state = function(time) {
             )
             .easing( TWEEN.Easing.Quadratic.InOut ).start()
             .onComplete(function() {
-                that.selected_section = that.sorted_mapdata[0];
+                that.selected_section = that.sorted_mapdata[1];
                 that.state = "jump-to-section";
                 that.state_locked = false;
             });
@@ -371,23 +372,26 @@ World.prototype.handle_state = function(time) {
     if (this.state == "jump-to-section") {
         var pos = this.selected_section.position;
         console.log(this.selected_section);
-        pos.normalize();
-        var direction = new THREE.Vector3(.001,.001,.001);
-        direction.normalize();
-        var line = new THREE.Line3(pos, direction);
-        var distance = line.distance();
-        var camera_pos = line.at(10/distance);
-        camera_pos.setZ(20);
 
-        var quaternion = new THREE.Quaternion();
-        quaternion.setFromUnitVectors(camera_pos, direction);
-        console.log(quaternion);
+        var origin     = new THREE.Vector3(0,0,0),
+            line       = new THREE.Line3(pos, origin),
+            distance   = line.distance(),
+            camera_pos = line.at(5/distance);
+        camera_pos.setZ(pos.z + 4);
+        console.log('camera', camera_pos);
+
+        var deltaX = camera_pos.x - pos.x;
+        var deltaY = camera_pos.y - pos.y;
+        var deltaZ = camera_pos.z - pos.z;
+        var rotateX = Math.atan(deltaY / deltaZ) + Math.PI/2;
+        var rotateY = Math.atan(deltaZ / deltaX) + Math.PI/2;
+
         this.state_locked = true;
         this.tween = new TWEEN.Tween(
             this.dolly.position
         ).to(
             camera_pos,
-            1000
+            3000
         )
         .easing( TWEEN.Easing.Quadratic.InOut ).start()
         .onComplete(function() {
@@ -395,14 +399,17 @@ World.prototype.handle_state = function(time) {
             that.state_locked = false;
         });
 
-        var tween = new TWEEN.Tween(
+        new TWEEN.Tween(
             this.dolly.rotation
         ).to(
-            quaternion,
-            1000
-        )
-        .easing( TWEEN.Easing.Quadratic.InOut ).start()
-            }
+            {
+                x: rotateX,
+                y: rotateY
+            },
+            3000
+        ).easing( TWEEN.Easing.Quadratic.InOut ).start();
+        
+     }
 };
 
 
