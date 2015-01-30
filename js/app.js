@@ -12,6 +12,11 @@ World.prototype.init = function() {
     this.boids.init(this.scene);
     this.build_title();
 
+    this.oak = new Oak();
+
+    this.oak.init(this.scene);
+
+
     this.vr_effect = new THREE.VREffect( this.renderer );
     this.vr_controls = new THREE.VRControls( this.camera );
     this.mono_controls = new THREE.OrbitControls( this.camera );
@@ -19,7 +24,7 @@ World.prototype.init = function() {
     this.change_mode("vr");
 
     this.state = "start";
-    this.animation_speed = 0.1;
+    this.animation_speed = 1.0;
 
     this.load_geo();
     this.load_listings();
@@ -151,7 +156,8 @@ World.prototype.bind_events = function() {
             that.enable_seatview = false;
             that.remove_seatview();
         } else if (e.keyCode == 13) { // enter
-
+            that.remove_label();
+            that.state = "oak";
         }
     });
     gestures.bind('left', function() {
@@ -554,7 +560,7 @@ World.prototype.handle_state = function(time) {
             {x: 0, y: 0, z: 200},
             4000*this.animation_speed
         )
-        .easing( TWEEN.Easing.Cubic.InOut ).delay(2000).start()
+        .easing( TWEEN.Easing.Cubic.InOut ).delay(4000).start()
         .onComplete(function() {
             that.state = "overhead";
             that.state_locked = false;
@@ -566,7 +572,7 @@ World.prototype.handle_state = function(time) {
             {x : 0},
             4000*this.animation_speed
         )
-        .easing( TWEEN.Easing.Cubic.InOut ).delay(2000).start();
+        .easing( TWEEN.Easing.Cubic.InOut ).delay(4000).start();
     }
     if (this.state == "overhead") {
         if (this.state_locked) {
@@ -621,6 +627,47 @@ World.prototype.handle_state = function(time) {
             },
             1000
         ).easing( TWEEN.Easing.Cubic.InOut ).start();
+     }
+
+     if (this.state == "oak") {
+        if (this.state_locked) return;
+        this.state_locked = true;
+        new TWEEN.Tween(
+            this.dolly.position
+        ).to(
+            new THREE.Vector3(2200, 2200, 70),
+            5000
+        )
+        .easing( TWEEN.Easing.Cubic.InOut ).start()
+        .onComplete(function() {
+            that.state = 'tipover';
+            that.state_locked = false;
+        });
+
+        new TWEEN.Tween(
+            this.dolly.rotation
+        ).to(
+            {
+                y: Math.PI*1.8
+            },
+            5000
+        ).easing( TWEEN.Easing.Cubic.InOut ).start();
+     }
+
+     if (this.state == "tipover") {
+        if (this.state_locked == true) return;
+        this.state_locked = true;
+        var tree = this.oak.get_object();
+        // tree.rotation.z = -Math.PI/2.5;
+
+        new TWEEN.Tween(
+            tree.rotation
+        ).to(
+            {
+                z:  -Math.PI/2.5
+            },
+            2000
+        ).easing( TWEEN.Easing.Bounce.Out ).delay(1000).start();
      }
 
      // Hover selected section
