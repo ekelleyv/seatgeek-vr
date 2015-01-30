@@ -8,20 +8,48 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r70/three.min.js" type="text/javascript"></script>
 
 
-    <script src="js/app.js" type="text/javascript"></script>
+
+    <script src="lib/tween.min.js" type="text/javascript"></script>
+    <script src="lib/VREffect.js" type="text/javascript"></script>
+    <script src="lib/VRControls.js" type="text/javascript"></script>
+    <script src="lib/OrbitControls.js" type="text/javascript"></script>
+    <script src="lib/StereoEffect.js" type="text/javascript"></script>
+    <script src="lib/DeviceOrientationControls.js" type="text/javascript"></script>
+
+
 
     <style type="text/css">
-        * { margin: 0; padding: 0; font: 13px/20px 'Helvetica Neue', Helvetica, Arial, sans-serif;}
+        html, body {
+                background-color: #000;
+                color: #fff;
+                margin: 0px;
+                overflow: hidden;
+            }
     </style>
+
+    <script type="x-shader/x-vertex" id="vertexShader">
+         varying vec3 vWorldPosition;
+         void main() {
+           vec4 worldPosition = modelMatrix * vec4( position, 1.0 );
+           vWorldPosition = worldPosition.xyz;
+           gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+         }
+       </script>
+
+       <script type="x-shader/x-fragment" id="fragmentShader">
+         uniform vec3 topColor;
+         uniform vec3 bottomColor;
+         uniform float offset;
+         uniform float exponent;
+         varying vec3 vWorldPosition;
+         void main() {
+           float h = normalize( vWorldPosition + offset ).z;
+           gl_FragColor = vec4( mix( bottomColor, topColor, max( pow( h, exponent ), 0.0 ) ), 1.0 );
+         }
+       </script>
 </head>
 <body>
-    <script type="text/javascript">
-        var controller = Leap.loop({enableGestures: true}, function(frame){
-        });
 
-        controller.on("gesture", function(gesture){
-          console.log(gesture.type);
-        });
-    </script>
+<script src="js/app.js" type="text/javascript"></script>
 </body>
 </html>
