@@ -563,7 +563,6 @@ World.prototype.handle_state = function(time) {
             .easing( TWEEN.Easing.Cubic.InOut ).start()
             .onComplete(function() {
                 that.selected_section = that.sorted_mapdata[1];
-                that.selected_section.object.material = new THREE.MeshNormalMaterial();
                 that.state = "jump-to-section";
                 that.state_locked = false;
             });
@@ -589,6 +588,7 @@ World.prototype.handle_state = function(time) {
         )
         .easing( TWEEN.Easing.Cubic.InOut ).start()
         .onComplete(function() {
+            that.animate_selected_section(true);
             that.state = 'idle';
             that.state_locked = false;
         });
@@ -603,6 +603,36 @@ World.prototype.handle_state = function(time) {
             1000
         ).easing( TWEEN.Easing.Cubic.InOut ).start();
      }
+
+     // Hover selected section
+
+};
+
+World.prototype.animate_selected_section = function (restart) {
+    var that = this;
+    if (restart) {
+        if (this.hover_animation) {
+            this.hover_animation.stop();
+        }
+        if (this.hover_target) {
+            this.hover_target.position.z = this.hover_z;
+        }
+        this.hover_target = this.selected_section.object;
+        this.hover_z = this.hover_target.position.z;
+    }
+    this.hover_animation = new TWEEN.Tween(
+        this.hover_target.position
+    ).to({ z: this.hover_z + .5 }, 2000
+    ).easing( TWEEN.Easing.Cubic.InOut ).start()
+    .onComplete(function() {
+        that.hover_animation = new TWEEN.Tween(
+            that.hover_target.position
+        ).to({ z: that.hover_z - .5 }, 2000
+        ).easing( TWEEN.Easing.Quadratic.InOut ).start()
+        .onComplete(function() {
+            that.animate_selected_section(false);
+        });
+    });
 };
 
 
