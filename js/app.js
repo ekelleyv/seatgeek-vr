@@ -583,12 +583,12 @@ World.prototype.handle_state = function(time) {
         this.state_locked = true;
         this.tween = new TWEEN.Tween(this.dolly.position)
             .to({
-                x: 0, 
+                x: 0,
                 y: 0,
                 z: 200
             }, 4000*this.animation_speed)
             .easing( TWEEN.Easing.Cubic.InOut )
-            .delay(2000)
+            .delay(4000)
             .start()
             .onComplete(function() {
                 that.state = "overhead";
