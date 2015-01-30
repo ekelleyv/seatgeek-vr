@@ -8,6 +8,7 @@ World.prototype.init = function() {
     this.scene = this.init_scene();
     this.camera = this.init_camera();
     this.lights = this.init_lights();
+    this.build_title();
 
     this.vr_effect = new THREE.VREffect( this.renderer );
     this.vr_controls = new THREE.VRControls( this.camera );
@@ -18,9 +19,7 @@ World.prototype.init = function() {
 
     this.change_mode("mono");
 
-
-
-
+    this.state = "title";
 
     this.load_geo();
     this.load_listings();
@@ -146,13 +145,13 @@ World.prototype.init_scene = function() {
 
     // var axisHelper = new THREE.AxisHelper( 10 );
     // scene.add( axisHelper );
-    var ground = new THREE.Mesh(new THREE.PlaneBufferGeometry( 500, 500, 100, 100 ), new THREE.MeshLambertMaterial({
-        ambient: 0xffffff,
-        color: 0xffffff,
-        // specular: 0x050505
-    }));
+    // var ground = new THREE.Mesh(new THREE.PlaneBufferGeometry( 500, 500, 100, 100 ), new THREE.MeshLambertMaterial({
+    //     ambient: 0xffffff,
+    //     color: 0xffffff,
+    //     // specular: 0x050505
+    // }));
 
-    ground.receiveShadow = true;
+    // ground.receiveShadow = true;
     // scene.add(ground);
 
 
@@ -213,8 +212,7 @@ World.prototype.init_camera = function() {
                                 ASPECT,
                                 NEAR,
                                 FAR  );
-    camera.position.set( 0, -75, 50);
-    camera.lookAt(new THREE.Vector3(0, 0, 0) );
+    camera.position.set( 0, -1000, 50);
 
     this.dolly = new THREE.Group();
 
@@ -254,10 +252,29 @@ World.prototype.build_stadium =  function () {
           });
         var object = new THREE.Mesh(geometry, building_material);
         // object.position.z = this.mapdata[section_name].max_dq_bucket|| 0;
+        var distance = Math.sqrt((this.geo_data.center[0] - section.center[0])*(this.geo_data.center[0] - section.center[0]) + (this.geo_data.center[1] - section.center[1])*(this.geo_data.center[1] - section.center[1]))
+        object.position.z = Math.pow(distance/100, 2);
         this.stadium_group.add(object);
     }
 
     this.scene.add(this.stadium_group);
+};
+
+World.prototype.build_title =  function () {
+    var geometry = new THREE.TextGeometry("SEATGEEK VR", {size: 50, height: 5, font: "helvetiker", weight: "bold"});
+    var material = new THREE.MeshNormalMaterial();
+
+    var object = new THREE.Mesh(geometry, material);
+
+    object.rotation.x = Math.PI/2
+
+    object.position.x = -250;
+    object.position.y = -700;
+    object.position.z = 10;
+
+    this.text_object = object;
+
+    this.scene.add(object);
 };
 
 World.prototype.convert_shape = function (input_points) {
@@ -270,13 +287,35 @@ World.prototype.convert_shape = function (input_points) {
     return shape;
 },
 
-World.prototype.render = function() {
+World.prototype.render = function(time) {
     requestAnimationFrame( this.render.bind(this) );
 
-    // if (typeof this.controls.update == 'function') {
-    //     this.controls.update();
-    // }
-    this.effect.render( this.scene, this.camera );
+    TWEEN.update(time);
+
+    if (typeof this.controls.update == 'function') {
+        this.controls.update();
+    }
+    this.handle_state(time);
+
+    this.renderer.render( this.scene, this.camera );
+};
+
+World.prototype.handle_state = function(time) {
+    var that = this;
+    if (this.state = "title") {
+
+    }
+    if (this.state = "title") {
+        if (!this.tween) {
+            this.tween = new TWEEN.Tween(
+                this.camera.position
+            ).to(
+                {x: 0, y: 0, z: 300},
+                4000
+            )
+            .easing( TWEEN.Easing.Cubic.InOut ).delay(2000).start();
+        }
+    }
 };
 
 
