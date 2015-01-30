@@ -248,6 +248,7 @@ World.prototype.color_for_bucket = function(bucket) {
 
 World.prototype.build_stadium =  function () {
     this.stadium_group = new THREE.Object3D();
+    this.sorted_mapdata = [];
 
     for (var section_name in this.mapdata) {
         var section = this.mapdata[section_name];
@@ -263,9 +264,19 @@ World.prototype.build_stadium =  function () {
         var distance = Math.sqrt((this.geo_data.center[0] - section.center[0])*(this.geo_data.center[0] - section.center[0]) + (this.geo_data.center[1] - section.center[1])*(this.geo_data.center[1] - section.center[1]))
         object.position.z = Math.pow(distance/100, 2);
         this.stadium_group.add(object);
+
+        this.mapdata[section_name].object = object;
+        this.mapdata[section_name].name = section_name;
+        this.sorted_mapdata.push(this.mapdata[section_name]);
     }
 
     this.scene.add(this.stadium_group);
+
+    this.sorted_mapdata.sort(function(a, b) {
+        if (!b.max_dq) return -1;
+        if (!a.max_dq) return  1;
+        return b.max_dq - a.max_dq;
+    });
 };
 
 World.prototype.build_title =  function () {
@@ -301,11 +312,11 @@ World.prototype.render = function(time) {
     TWEEN.update(time);
 
     if (typeof this.controls.update == 'function') {
-        // this.controls.update();
+        this.controls.update();
     }
     this.handle_state(time);
 
-    this.renderer.render( this.scene, this.camera );
+    this.effect.render( this.scene, this.camera );
 };
 
 World.prototype.handle_state = function(time) {
@@ -348,6 +359,28 @@ World.prototype.handle_state = function(time) {
                 this.state_locked = false;
             });
     }
+    if (this.state == "lower-overhead") {
+        this.state_locked = true;
+        this.tween = new TWEEN.Tween(
+            this.dolly.position
+        ).to(
+            {x: 30, y: -5, z: 20},
+            1000
+        )
+        .easing( TWEEN.Easing.Quadratic.InOut ).start()
+        .onComplete(function() {
+            that.state = 'lolcat-central';
+            this.state_locked = false;
+        });
+
+        var tween = new TWEEN.Tween(
+            this.dolly.rotation
+        ).to(
+            {x: 0.7},
+            1000
+        )
+        .easing( TWEEN.Easing.Quadratic.InOut ).start()
+            }
 };
 
 
