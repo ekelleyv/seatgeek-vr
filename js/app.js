@@ -8,6 +8,8 @@ World.prototype.init = function() {
     this.scene = this.init_scene();
     this.camera = this.init_camera();
     this.lights = this.init_lights();
+    this.boids = new Boids();
+    this.boids.init(this.scene);
     this.build_title();
 
     this.vr_effect = new THREE.VREffect( this.renderer );
@@ -35,7 +37,6 @@ World.prototype.init = function() {
 World.prototype.load_geo = function() {
     var that = this;
     $.getJSON("/data/yankees_geo.json", function(data) {
-        console.log("Received geo json");
         that.geo_data = data;
         that.process_mapdata();
     });
@@ -44,7 +45,6 @@ World.prototype.load_geo = function() {
 World.prototype.load_listings = function() {
     var that = this;
     $.getJSON("/data/yankees_listings.json", function(data) {
-        console.log("Received listings json");
         that.listings_data = data;
         that.process_mapdata();
     });
@@ -94,7 +94,6 @@ World.prototype.process_mapdata = function() {
     }
 
     for (var seatview_name in this.listings_data.seatviews["2048"]) {
-        console.log(this.listings_data.seatviews["2048"][seatview_name]);
         if (this.mapdata[seatview_name]) {
             this.mapdata[seatview_name].seatview = this.listings_data.seatviews["2048"][seatview_name];
         }
@@ -400,6 +399,8 @@ World.prototype.render = function(time) {
         this.controls.update();
     }
     this.handle_state(time);
+
+    this.boids.render();
 
     this.effect.render( this.scene, this.camera );
 };
