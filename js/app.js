@@ -16,7 +16,7 @@ World.prototype.init = function() {
 
     this.mono_controls = new THREE.OrbitControls( this.camera );
 
-    this.change_mode("mono");
+    this.change_mode("vr");
 
 
 
@@ -202,6 +202,7 @@ World.prototype.init_lights = function() {
 };
 
 World.prototype.init_camera = function() {
+    console.log('init camera');
     var WIDTH = window.innerWidth,
         HEIGHT = window.innerHeight;
 
@@ -213,14 +214,14 @@ World.prototype.init_camera = function() {
                                 ASPECT,
                                 NEAR,
                                 FAR  );
-    camera.position.set( 0, -75, 50);
-    camera.lookAt(new THREE.Vector3(0, 0, 0) );
+    camera.position.set( 0, 0, 70);
+    //camera.lookAt(new THREE.Vector3(0, 0, 0) );
 
-    this.dolly = new THREE.Group();
+    // this.dolly = new THREE.Group();
 
-    this.dolly.add(camera);
+    // this.dolly.add(camera);
 
-    this.scene.add(this.dolly);
+    // this.scene.add(this.dolly);
 
     return camera;
 }
@@ -276,7 +277,12 @@ World.prototype.render = function() {
     // if (typeof this.controls.update == 'function') {
     //     this.controls.update();
     // }
+    this.controls.update();
+    // the camera position changes when the oculus is in front
+    // of the viewer, so this is a temporary fix
+    this.camera.position.set( 0, 0, 70);
     this.effect.render( this.scene, this.camera );
+    console.log('render');
 };
 
 
