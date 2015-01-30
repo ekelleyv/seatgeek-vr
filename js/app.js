@@ -17,7 +17,7 @@ World.prototype.init = function() {
 
     this.mono_controls = new THREE.OrbitControls( this.camera );
 
-    this.change_mode("mono");
+    this.change_mode("vr");
 
     this.state = "start";
 
@@ -25,6 +25,8 @@ World.prototype.init = function() {
 
     this.load_geo();
     this.load_listings();
+
+    this.bind_events();
 
     requestAnimationFrame(this.render.bind(this));
 
@@ -91,16 +93,12 @@ World.prototype.process_mapdata = function() {
         };
     }
 
-    console.log(this.listings_data);
-
     for (var seatview_name in this.listings_data.seatviews["2048"]) {
         console.log(this.listings_data.seatviews["2048"][seatview_name]);
         if (this.mapdata[seatview_name]) {
             this.mapdata[seatview_name].seatview = this.listings_data.seatviews["2048"][seatview_name];
         }
     }
-
-    console.log(this.mapdata);
 
     this.build_stadium();
 };
@@ -137,6 +135,40 @@ function handle_fs_change(e) {
     this.effect = this.renderer;
     this.controls = this.mono_controls;
   }
+};
+
+World.prototype.bind_events = function() {
+    var that = this;
+    this.selected_section_index = 1;
+    $(document).on('keypress', function(e) {
+        if (e.keyCode == 37) { // left
+            that.go_to_previous_deal();
+        } else if (e.keyCode == 39) { // right
+            that.go_to_next_deal();
+        } else if (e.keyCode == 13) { // enter
+
+        }
+    });
+};
+
+World.prototype.go_to_previous_deal = function() {
+    if (this.state_locked == true) return;
+    this.selected_section_index--;
+    if (this.selected_section_index < 0) {
+        this.selected_section_index = this.sorted_mapdata.length - 1;
+    }
+    this.selected_section = this.sorted_mapdata[this.selected_section_index];
+    this.state = 'jump-to-section';
+};
+
+World.prototype.go_to_next_deal = function() {
+    if (this.state_locked == true) return;
+    this.selected_section_index++;
+    if (this.selected_section_index > this.sorted_mapdata.length - 1) {
+        this.selected_section_index = 0;
+    }
+    this.selected_section = this.sorted_mapdata[this.selected_section_index];
+    this.state = 'jump-to-section';
 };
 
 
