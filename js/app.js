@@ -270,9 +270,9 @@ World.prototype.build_stadium =  function () {
         section.position.y = (500 - section.center[1])/10;
         this.stadium_group.add(object);
 
-        this.mapdata[section_name].object = object;
-        this.mapdata[section_name].name = section_name;
-        this.sorted_mapdata.push(this.mapdata[section_name]);
+        section.object = object;
+        section.name = section_name;
+        this.sorted_mapdata.push(section);
     }
     this.scene.add(this.stadium_group);
 
@@ -363,28 +363,42 @@ World.prototype.handle_state = function(time) {
             )
             .easing( TWEEN.Easing.Quadratic.InOut ).start()
             .onComplete(function() {
-                that.state = "lower-overhead";
-                this.state_locked = false;
+                that.selected_section = that.sorted_mapdata[0];
+                that.state = "jump-to-section";
+                that.state_locked = false;
             });
     }
-    if (this.state == "lower-overhead") {
+    if (this.state == "jump-to-section") {
+        var pos = this.selected_section.position;
+        console.log(this.selected_section);
+        pos.normalize();
+        var direction = new THREE.Vector3(.001,.001,.001);
+        direction.normalize();
+        var line = new THREE.Line3(pos, direction);
+        var distance = line.distance();
+        var camera_pos = line.at(10/distance);
+        camera_pos.setZ(20);
+
+        var quaternion = new THREE.Quaternion();
+        quaternion.setFromUnitVectors(camera_pos, direction);
+        console.log(quaternion);
         this.state_locked = true;
         this.tween = new TWEEN.Tween(
             this.dolly.position
         ).to(
-            {x: 30, y: -5, z: 20},
+            camera_pos,
             1000
         )
         .easing( TWEEN.Easing.Quadratic.InOut ).start()
         .onComplete(function() {
             that.state = 'lolcat-central';
-            this.state_locked = false;
+            that.state_locked = false;
         });
 
         var tween = new TWEEN.Tween(
             this.dolly.rotation
         ).to(
-            {x: 0.7},
+            quaternion,
             1000
         )
         .easing( TWEEN.Easing.Quadratic.InOut ).start()
