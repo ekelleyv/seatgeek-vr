@@ -218,6 +218,10 @@ World.prototype.init_camera = function() {
 
     this.dolly = new THREE.Group();
 
+    this.dolly.rotateX(Math.PI/2);
+
+    this.dolly.position.set(0, -1200, 50);
+
 
     this.dolly.add(camera);
 
@@ -307,24 +311,42 @@ World.prototype.render = function(time) {
 World.prototype.handle_state = function(time) {
     var that = this;
     if (this.state == "title") {
-        if (!this.tween) {
+        if (!this.state_locked) {
             this.state_locked = true;
             this.tween = new TWEEN.Tween(
                 this.dolly.position
             ).to(
-                {x: 0, y: 0, z: 300},
+                {x: 0, y: 0, z: 200},
                 4000
             )
-            .easing( TWEEN.Easing.Cubic.InOut ).delay(0).start()
+            .easing( TWEEN.Easing.Cubic.InOut ).delay(2000).start()
             .onComplete(function() {
                 that.state = "overhead";
                 this.state_locked = false;
             });
 
+            var tween = new TWEEN.Tween(
+                this.dolly.rotation
+            ).to(
+                {x : 0},
+                4000
+            )
+            .easing( TWEEN.Easing.Cubic.InOut ).delay(2000).start();
         }
     }
     if (this.state == "overhead") {
-        console.log("IN OVERHEAD");
+        this.state_locked = true;
+            this.tween = new TWEEN.Tween(
+                this.dolly.position
+            ).to(
+                {x: 0, y: 0, z: 100},
+                1000
+            )
+            .easing( TWEEN.Easing.Quadratic.InOut ).start()
+            .onComplete(function() {
+                that.state = "lower-overhead";
+                this.state_locked = false;
+            });
     }
 };
 
