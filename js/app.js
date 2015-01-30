@@ -145,6 +145,12 @@ World.prototype.bind_events = function() {
             that.go_to_previous_deal();
         } else if (e.keyCode == 39) { // right
             that.go_to_next_deal();
+        } else if (e.keyCode == 38) { // up
+            e.preventDefault();
+            that.state = 'display-seatview';
+        } else if (e.keyCode == 40) { // down
+            e.preventDefault();
+            that.remove_seatview();
         } else if (e.keyCode == 13) { // enter
 
         }
@@ -381,7 +387,7 @@ World.prototype.render = function(time) {
 };
 
 World.prototype.display_seatview = function(section_name) {
-    if (this.selected_seatview) this.selected_seatview.remove();
+    var that = this;
     if (!this.mapdata[section_name].seatview) return;
     var geometry = new THREE.PlaneBufferGeometry( 6.4, 4.8, 5 );
     var split = section_name.split('-');
@@ -395,21 +401,37 @@ World.prototype.display_seatview = function(section_name) {
 
     var material = new THREE.MeshBasicMaterial( {map : texture, opacity: 0, transparent: true} );
 
+    var plane = new THREE.Mesh( geometry, material );
+
+    plane.position.z = -4;
+
     var tween = new TWEEN.Tween(
         material
     ).to(
         {opacity : 0.95},
         500
-    ).start();
-
-    var plane = new THREE.Mesh( geometry, material );
-
-    plane.position.z = -4;
-
-    this.selected_seatview = plane;
+    ).start().onComplete(function() {
+        that.remove_seatview();
+        that.selected_seatview = plane;
+    });
 
     this.dolly.add( plane );
 };
+
+World.prototype.remove_seatview = function() {
+    var that = this;
+    if (this.selected_seatview) {
+        var seatview = this.selected_seatview;
+        var tween = new TWEEN.Tween(
+            seatview.material
+        ).to(
+            {opacity : 0},
+            500
+        ).start().onComplete(function() {
+            that.dolly.remove(seatview);
+        });
+    }
+}
 
 World.prototype.handle_state = function(time) {
     var that = this;
@@ -456,6 +478,7 @@ World.prototype.handle_state = function(time) {
             .easing( TWEEN.Easing.Cubic.InOut ).start()
             .onComplete(function() {
                 that.selected_section = that.sorted_mapdata[1];
+                that.selected_section.object.material = new THREE.MeshNormalMaterial();
                 that.state = "jump-to-section";
                 that.state_locked = false;
             });
@@ -466,18 +489,12 @@ World.prototype.handle_state = function(time) {
         }
         var pos = this.selected_section.position;
 
+
         var origin     = new THREE.Vector3(0,0,0),
             line       = new THREE.Line3(pos, origin),
             distance   = line.distance(),
-            camera_pos = line.at(5/distance);
-        camera_pos.setZ(pos.z + 4);
-        console.log('camera', camera_pos);
-
-        var deltaX = camera_pos.x - pos.x;
-        var deltaY = camera_pos.y - pos.y;
-        var deltaZ = camera_pos.z - pos.z;
-        var rotateX = Math.atan(deltaY / deltaZ) + Math.PI/2;
-        var rotateY = Math.atan(deltaZ / deltaX) + Math.PI/2;
+            camera_pos = line.at(10/distance);
+        camera_pos.setZ(pos.z + 3);
 
         this.state_locked = true;
         this.tween = new TWEEN.Tween(
@@ -488,24 +505,29 @@ World.prototype.handle_state = function(time) {
         )
         .easing( TWEEN.Easing.Cubic.InOut ).start()
         .onComplete(function() {
-            that.state = 'display-seatview';
+            if (that.selected_seatview) {
+                that.state = 'display-seatview';
+            } else {
+                that.state = 'idle';
+            }
             that.state_locked = false;
+            // that.dolly.rotation.set( rotateX, rotateY, 0);
         });
 
         new TWEEN.Tween(
             this.dolly.rotation
         ).to(
             {
-                x: rotateX,
-                y: rotateY
+                x: Math.PI/2,
+                y: Math.atan((that.selected_section.position.y - that.dolly.position.y)/(that.selected_section.position.x - that.dolly.position.x)) + Math.PI/2
             },
             1000
         ).easing( TWEEN.Easing.Cubic.InOut ).start();
      }
      if (this.state == "display-seatview") {
         this.display_seatview(this.selected_section.name);
-        that.dolly.up.set(0, 0, 1);
         this.state = 'idle';
+        // this.dolly.rotation.set( 0, Math.PI/2, Math.PI/2);
      }
      // this.display_seatview("grandstand-level-413");
 };
