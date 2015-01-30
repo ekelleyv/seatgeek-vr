@@ -39,7 +39,7 @@ World.prototype.init = function() {
 
 World.prototype.load_geo = function() {
     var that = this;
-    $.getJSON("/data/yankees_geo.json", function(data) {
+    $.getJSON("data/yankees_geo.json", function(data) {
         that.geo_data = data;
         that.process_mapdata();
     });
@@ -47,7 +47,7 @@ World.prototype.load_geo = function() {
 
 World.prototype.load_listings = function() {
     var that = this;
-    $.getJSON("/data/yankees_listings.json", function(data) {
+    $.getJSON("data/yankees_listings.json", function(data) {
         that.listings_data = data;
         that.process_mapdata();
     });
