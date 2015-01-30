@@ -12,6 +12,11 @@ World.prototype.init = function() {
     this.boids.init(this.scene);
     this.build_title();
 
+    this.oak = new Oak();
+
+    this.oak.init(this.scene);
+
+
     this.vr_effect = new THREE.VREffect( this.renderer );
     this.vr_controls = new THREE.VRControls( this.camera );
     this.mono_controls = new THREE.OrbitControls( this.camera );
@@ -20,6 +25,7 @@ World.prototype.init = function() {
 
     this.state = "start";
     this.animation_speed = 1;
+    this.animation_speed = 1.0;
 
     this.load_geo();
     this.load_listings();
@@ -34,7 +40,7 @@ World.prototype.init = function() {
 
 World.prototype.load_geo = function() {
     var that = this;
-    $.getJSON("/data/yankees_geo.json", function(data) {
+    $.getJSON("data/yankees_geo.json", function(data) {
         that.geo_data = data;
         that.process_mapdata();
     });
@@ -42,7 +48,7 @@ World.prototype.load_geo = function() {
 
 World.prototype.load_listings = function() {
     var that = this;
-    $.getJSON("/data/yankees_listings.json", function(data) {
+    $.getJSON("data/yankees_listings.json", function(data) {
         that.listings_data = data;
         that.process_mapdata();
     });
@@ -162,7 +168,8 @@ World.prototype.bind_events = function() {
             that.enable_seatview = false;
             that.remove_seatview();
         } else if (e.keyCode == 13) { // enter
-
+            that.remove_label();
+            that.state = "oak";
         }
     });
     gestures.bind('left', function() {
@@ -321,13 +328,26 @@ World.prototype.build_stadium =  function () {
     this.stadium_group = new THREE.Object3D();
     this.sorted_mapdata = [];
 
+    var geometry = new THREE.PlaneBufferGeometry( 44, 44, 20 );
+    var url = "yankees_field.png";
+    var texture = THREE.ImageUtils.loadTexture( url );
+    var fieldMaterial = new THREE.MeshBasicMaterial( {map : texture, transparent: true} );
+
+    var plane = new THREE.Mesh( geometry, fieldMaterial );
+
+    plane.position.y = 7;
+
+    this.scene.add(plane);
+
+    this.state = 'idle';
+
     for (var section_name in this.mapdata) {
         var section = this.mapdata[section_name];
         var building_material = new THREE.MeshPhongMaterial({
             color: this.color_for_bucket(section.type == 'section' ? section.max_dq_bucket : section.section.max_dq_bucket),
         });
 
-        var full_shape = false;
+        var full_shape = new THREE.Geometry();
         console.log(section);
         if (section.rows.length == 0) continue;
         for (i in section.rows) {
@@ -339,13 +359,7 @@ World.prototype.build_stadium =  function () {
                 amount: Math.pow(distance/200, 3),
                 bevelEnabled: false
             });
-            var mesh = new THREE.Mesh(geometry, building_material);
-
-            if (!full_shape) {
-                full_shape = new ThreeBSP(geometry);
-            } else {
-                full_shape = full_shape.union(new ThreeBSP(geometry));
-            }
+            THREE.GeometryUtils.merge(full_shape, geometry);
         }
 
         console.log('full shape', full_shape);
@@ -362,8 +376,8 @@ World.prototype.build_stadium =  function () {
         //     bevelEnabled: false
         //   });
 
-        var object = full_shape.toMesh(building_material);
-        //var object = new THREE.Mesh(full_shape, building_material);
+        //var object = full_shape.toMesh(building_material);
+        var object = new THREE.Mesh(full_shape, building_material);
 
         // object.position.z = Math.pow(distance/100, 2);
 
@@ -380,19 +394,7 @@ World.prototype.build_stadium =  function () {
         if (section.seatview) this.sorted_mapdata.push(section);
     }
     this.scene.add(this.stadium_group);
-
-    var geometry = new THREE.PlaneBufferGeometry( 44, 44, 20 );
-    var url = "/yankees_field.png";
-    var texture = THREE.ImageUtils.loadTexture( url );
-
-
-    var material = new THREE.MeshBasicMaterial( {map : texture, transparent: true} );
-
-    var plane = new THREE.Mesh( geometry, material );
-
-    plane.position.y = 7;
-
-    this.scene.add(plane);
+    this.state = 'start';
 
     this.sorted_mapdata.sort(function(a, b) {
         if (!b.max_dq) return -1;
@@ -596,7 +598,7 @@ World.prototype.handle_state = function(time) {
         var tween = new TWEEN.Tween(this.dolly.rotation)
             .to({x : 0}, 4000*this.animation_speed)
             .easing( TWEEN.Easing.Cubic.InOut )
-            .delay(2000)
+            .delay(4000)
             .start();
     }
     if (this.state == "overhead") {
@@ -648,6 +650,47 @@ World.prototype.handle_state = function(time) {
             }, 1000)
             .easing( TWEEN.Easing.Cubic.InOut )
             .start();
+     }
+
+     if (this.state == "oak") {
+        if (this.state_locked) return;
+        this.state_locked = true;
+        new TWEEN.Tween(
+            this.dolly.position
+        ).to(
+            new THREE.Vector3(2200, 2200, 70),
+            5000
+        )
+        .easing( TWEEN.Easing.Cubic.InOut ).start()
+        .onComplete(function() {
+            that.state = 'tipover';
+            that.state_locked = false;
+        });
+
+        new TWEEN.Tween(
+            this.dolly.rotation
+        ).to(
+            {
+                y: Math.PI*1.8
+            },
+            5000
+        ).easing( TWEEN.Easing.Cubic.InOut ).start();
+     }
+
+     if (this.state == "tipover") {
+        if (this.state_locked == true) return;
+        this.state_locked = true;
+        var tree = this.oak.get_object();
+        // tree.rotation.z = -Math.PI/2.5;
+
+        new TWEEN.Tween(
+            tree.rotation
+        ).to(
+            {
+                z:  -Math.PI/2.5
+            },
+            2000
+        ).easing( TWEEN.Easing.Bounce.Out ).delay(1000).start();
      }
 };
 
