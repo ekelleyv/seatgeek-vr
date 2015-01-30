@@ -17,7 +17,7 @@ World.prototype.init = function() {
 
     this.mono_controls = new THREE.OrbitControls( this.camera );
 
-    this.change_mode("mono");
+    this.change_mode("vr");
 
     this.state = "title";
 
@@ -201,6 +201,7 @@ World.prototype.init_lights = function() {
 };
 
 World.prototype.init_camera = function() {
+    console.log('init camera');
     var WIDTH = window.innerWidth,
         HEIGHT = window.innerHeight;
 
@@ -212,9 +213,11 @@ World.prototype.init_camera = function() {
                                 ASPECT,
                                 NEAR,
                                 FAR  );
-    camera.position.set( 0, -1000, 50);
+
+    camera.position.set( 0, 0, 0);
 
     this.dolly = new THREE.Group();
+
 
     this.dolly.add(camera);
 
@@ -293,7 +296,7 @@ World.prototype.render = function(time) {
     TWEEN.update(time);
 
     if (typeof this.controls.update == 'function') {
-        this.controls.update();
+        // this.controls.update();
     }
     this.handle_state(time);
 
@@ -303,18 +306,17 @@ World.prototype.render = function(time) {
 World.prototype.handle_state = function(time) {
     var that = this;
     if (this.state = "title") {
-
-    }
-    if (this.state = "title") {
         if (!this.tween) {
             this.tween = new TWEEN.Tween(
-                this.camera.position
+                this.dolly.position
             ).to(
                 {x: 0, y: 0, z: 300},
                 4000
             )
             .easing( TWEEN.Easing.Cubic.InOut ).delay(2000).start();
         }
+
+        // this.camera.lookAt(0, 0, 0);
     }
 };
 
