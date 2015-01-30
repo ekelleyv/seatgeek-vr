@@ -19,7 +19,9 @@ World.prototype.init = function() {
 
     this.change_mode("vr");
 
-    this.state = "title";
+    this.state = "start";
+
+    this.animation_speed = 0.1;
 
     this.load_geo();
     this.load_listings();
@@ -220,8 +222,6 @@ World.prototype.init_camera = function() {
 
     this.dolly.rotateX(Math.PI/2);
 
-    this.dolly.position.set(0, -1200, 50);
-
 
     this.dolly.add(camera);
 
@@ -263,13 +263,17 @@ World.prototype.build_stadium =  function () {
         // object.position.z = this.mapdata[section_name].max_dq_bucket|| 0;
         var distance = Math.sqrt((this.geo_data.center[0] - section.center[0])*(this.geo_data.center[0] - section.center[0]) + (this.geo_data.center[1] - section.center[1])*(this.geo_data.center[1] - section.center[1]))
         object.position.z = Math.pow(distance/100, 2);
+
+        section.position = object.position.clone();
+
+        section.position.x = (section.center[0] - 500)/10;
+        section.position.y = (500 - section.center[1])/10;
         this.stadium_group.add(object);
 
         this.mapdata[section_name].object = object;
         this.mapdata[section_name].name = section_name;
         this.sorted_mapdata.push(this.mapdata[section_name]);
     }
-
     this.scene.add(this.stadium_group);
 
     this.sorted_mapdata.sort(function(a, b) {
@@ -321,6 +325,10 @@ World.prototype.render = function(time) {
 
 World.prototype.handle_state = function(time) {
     var that = this;
+    if (this.state == "start") {
+        this.dolly.position.set(0, -1200, 50);
+        this.state = "title"
+    }
     if (this.state == "title") {
         if (!this.state_locked) {
             this.state_locked = true;
@@ -328,7 +336,7 @@ World.prototype.handle_state = function(time) {
                 this.dolly.position
             ).to(
                 {x: 0, y: 0, z: 200},
-                4000
+                4000*this.animation_speed
             )
             .easing( TWEEN.Easing.Cubic.InOut ).delay(2000).start()
             .onComplete(function() {
@@ -340,7 +348,7 @@ World.prototype.handle_state = function(time) {
                 this.dolly.rotation
             ).to(
                 {x : 0},
-                4000
+                4000*this.animation_speed
             )
             .easing( TWEEN.Easing.Cubic.InOut ).delay(2000).start();
         }
@@ -351,7 +359,7 @@ World.prototype.handle_state = function(time) {
                 this.dolly.position
             ).to(
                 {x: 0, y: 0, z: 100},
-                1000
+                1000*this.animation_speed
             )
             .easing( TWEEN.Easing.Quadratic.InOut ).start()
             .onComplete(function() {
