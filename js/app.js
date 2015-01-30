@@ -17,11 +17,11 @@ World.prototype.init = function() {
 
     this.mono_controls = new THREE.OrbitControls( this.camera );
 
-    this.change_mode("vr");
+    this.change_mode("mono");
 
     this.state = "start";
 
-    this.animation_speed = 0.1;
+    this.animation_speed = 1.0;
 
     this.load_geo();
     this.load_listings();
@@ -48,6 +48,12 @@ World.prototype.load_listings = function() {
     });
 };
 
+World.prototype.get_section_name_from_mk = function(mk) {
+    var re = /^s:((?:\w|-)+)/;
+    var section_name = re.exec(mk)[1];
+    return section_name;
+};
+
 World.prototype.process_mapdata = function() {
     if (!this.geo_data || !this.listings_data) {
         return;
@@ -68,8 +74,7 @@ World.prototype.process_mapdata = function() {
     for (var i = 0; i < this.listings_data.listings.length; i++) {
         var listing = this.listings_data.listings[i];
         if (listing.mk) {
-            var re = /^s:((?:\w|-)+)/;
-            var section_name = re.exec(listing.mk)[1];
+            var section_name = this.get_section_name_from_mk(listing.mk);
 
             if (!this.mapdata[section_name]) { continue; };
 
@@ -85,6 +90,17 @@ World.prototype.process_mapdata = function() {
             }
         };
     }
+
+    console.log(this.listings_data);
+
+    for (var seatview_name in this.listings_data.seatviews["2048"]) {
+        console.log(this.listings_data.seatviews["2048"][seatview_name]);
+        if (this.mapdata[seatview_name]) {
+            this.mapdata[seatview_name].seatview = this.listings_data.seatviews["2048"][seatview_name];
+        }
+    }
+
+    console.log(this.mapdata);
 
     this.build_stadium();
 };
@@ -305,11 +321,38 @@ World.prototype.render = function(time) {
     TWEEN.update(time);
 
     if (typeof this.controls.update == 'function') {
-        // this.controls.update();
+        this.controls.update();
     }
     this.handle_state(time);
 
-    this.renderer.render( this.scene, this.camera );
+    this.effect.render( this.scene, this.camera );
+};
+
+World.prototype.display_seatview = function(section_name) {
+    if (this.selected_seatview) {
+        return;
+    }
+    var geometry = new THREE.PlaneBufferGeometry( 6.4, 4.8, 5 );
+    var url = "/img/" + this.mapdata[section_name].seatview.split("-").pop();
+    var texture = THREE.ImageUtils.loadTexture( url );
+
+
+    var material = new THREE.MeshPhongMaterial( {map : texture, opacity: 0, transparent: true} );
+
+    var tween = new TWEEN.Tween(
+        material
+    ).to(
+        {opacity : 0.95},
+        1000
+    ).start();
+
+    var plane = new THREE.Mesh( geometry, material );
+
+    plane.position.z = -4;
+
+    this.selected_seatview = plane;
+
+    this.dolly.add( plane );
 };
 
 World.prototype.handle_state = function(time) {
@@ -355,6 +398,11 @@ World.prototype.handle_state = function(time) {
                 that.state = "lower-overhead";
                 this.state_locked = false;
             });
+    }
+    if (this.state == "lower-overhead") {
+        // this.display_seatview("grandstand-level-413");
+    }
+    if (this.state == "seatview-detail") {
     }
 };
 
