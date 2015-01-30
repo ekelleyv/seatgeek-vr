@@ -315,20 +315,25 @@ World.prototype.build_stadium =  function () {
         var section = this.mapdata[section_name];
         var building_material = new THREE.MeshPhongMaterial({color : this.color_for_bucket(section.max_dq_bucket)});
         var shape = this.convert_shape(section.points);
-        var geometry = shape
-          .extrude({
-            amount: 0.35,
-            bevelEnabled: false
-          });
-        var object = new THREE.Mesh(geometry, building_material);
+
         // object.position.z = this.mapdata[section_name].max_dq_bucket|| 0;
         var distance = Math.sqrt((this.geo_data.center[0] - section.center[0])*(this.geo_data.center[0] - section.center[0]) + (this.geo_data.center[1] - section.center[1])*(this.geo_data.center[1] - section.center[1]))
-        object.position.z = Math.pow(distance/100, 2);
+
+        var geometry = shape
+          .extrude({
+            amount: Math.pow(distance/200, 3),
+            bevelEnabled: false
+          });
+
+        var object = new THREE.Mesh(geometry, building_material);
+
+        // object.position.z = Math.pow(distance/100, 2);
 
         section.position = object.position.clone();
 
         section.position.x = (section.center[0] - 500)/10;
         section.position.y = (500 - section.center[1])/10;
+        section.position.z = Math.pow(distance/200, 3);
         this.stadium_group.add(object);
 
         section.object = object;
@@ -338,6 +343,19 @@ World.prototype.build_stadium =  function () {
         }
     }
     this.scene.add(this.stadium_group);
+
+    var geometry = new THREE.PlaneBufferGeometry( 44, 44, 20 );
+    var url = "/yankees_field.png";
+    var texture = THREE.ImageUtils.loadTexture( url );
+
+
+    var material = new THREE.MeshBasicMaterial( {map : texture, transparent: true} );
+
+    var plane = new THREE.Mesh( geometry, material );
+
+    plane.position.y = 7;
+
+    this.scene.add(plane);
 
     this.sorted_mapdata.sort(function(a, b) {
         if (!b.max_dq) return -1;
@@ -478,7 +496,6 @@ World.prototype.handle_state = function(time) {
             .easing( TWEEN.Easing.Cubic.InOut ).start()
             .onComplete(function() {
                 that.selected_section = that.sorted_mapdata[1];
-                that.selected_section.object.material = new THREE.MeshNormalMaterial();
                 that.state = "jump-to-section";
                 that.state_locked = false;
             });
