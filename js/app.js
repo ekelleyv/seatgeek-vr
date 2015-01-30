@@ -305,18 +305,25 @@ World.prototype.render = function(time) {
 
 World.prototype.handle_state = function(time) {
     var that = this;
-    if (this.state = "title") {
+    if (this.state == "title") {
         if (!this.tween) {
+            this.state_locked = true;
             this.tween = new TWEEN.Tween(
                 this.dolly.position
             ).to(
                 {x: 0, y: 0, z: 300},
                 4000
             )
-            .easing( TWEEN.Easing.Cubic.InOut ).delay(2000).start();
-        }
+            .easing( TWEEN.Easing.Cubic.InOut ).delay(0).start()
+            .onComplete(function() {
+                that.state = "overhead";
+                this.state_locked = false;
+            });
 
-        // this.camera.lookAt(0, 0, 0);
+        }
+    }
+    if (this.state == "overhead") {
+        console.log("IN OVERHEAD");
     }
 };
 
