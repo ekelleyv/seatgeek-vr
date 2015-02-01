@@ -195,6 +195,10 @@ World.prototype.bind_events = function() {
             that.state = "oak";
         } else if (e.keyCode == 27) { // escape
             if (that.state_locked) return;
+            that.remove_label();
+            that.show_seatview = false;
+            that.show_reverse = false;
+            that.remove_seatview();
             that.state = 'overhead-idle';
         }
     });
