@@ -187,12 +187,15 @@ World.prototype.bind_events = function() {
             }
         } else if (e.keyCode == 40) { // down
             e.preventDefault();
-            if (that.state_locked == true) return;
+            if (that.state_locked) return;
             that.show_reverse = !that.show_reverse;
             that.state = 'jump-to-section';
         } else if (e.keyCode == 13) { // enter
             that.remove_label();
             that.state = "oak";
+        } else if (e.keyCode == 27) { // escape
+            if (that.state_locked) return;
+            that.state = 'overhead-idle';
         }
     });
 
@@ -651,10 +654,35 @@ World.prototype.handle_state = function(time) {
                 that.state_locked = false;
             });
     }
+    if (this.state == "overhead-idle") {
+        if (this.state_locked) return;
+        this.state_locked = true;
+        this.tween = new TWEEN.Tween(this.dolly.position)
+            .to({
+                x: 0,
+                y: 0,
+                z: 100
+            }, 1000*this.animation_speed)
+            .easing( TWEEN.Easing.Cubic.InOut )
+            .start()
+            .onComplete(function() {
+                that.state = "idle";
+                that.state_locked = false;
+            });
+
+        var tween = new TWEEN.Tween(this.dolly.rotation)
+            .to({x : 0, y: 0}, 1000*this.animation_speed)
+            .easing( TWEEN.Easing.Cubic.InOut )
+            .start();
+    }
     if (this.state == "jump-to-section") {
         if (this.state_locked) return;
         this.state_locked = true;
-        this.build_label(this.selected_section.name + ', $' + this.selected_section.max_dq_price);
+        var label = this.selected_section.name;
+        if (this.selected_section.max_dq_price) {
+            label += ', $' + this.selected_section.max_dq_price;
+        }
+        this.build_label(label);
         this.display_seatview(this.selected_section.name);
 
         var origin     = new THREE.Vector3(0,0,0),
