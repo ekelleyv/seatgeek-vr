@@ -3,7 +3,6 @@
 var World = function() {};
 
 World.prototype.init = function() {
-
     this.renderer = this.init_renderer();
     this.scene = this.init_scene();
     this.camera = this.init_camera();
@@ -21,7 +20,7 @@ World.prototype.init = function() {
     this.vr_controls = new THREE.VRControls( this.camera );
     this.mono_controls = new THREE.OrbitControls( this.camera );
 
-    this.change_mode("vr");
+    this.change_mode("mono");
 
     this.state = "start";
     this.animation_speed = 1;
@@ -31,8 +30,9 @@ World.prototype.init = function() {
     this.load_listings();
 
     this.bind_events();
-    this.enable_seatview = false;
+    this.show_seatview = false;
     this.selected_seatview = null;
+    this.show_reverse = false;
 
     requestAnimationFrame(this.render.bind(this));
 
@@ -154,19 +154,27 @@ function handle_fs_change(e) {
 World.prototype.bind_events = function() {
     var that = this;
     this.selected_section_index = 1;
+    console.log('is this being called twice?');
     $(document).on('keypress', function(e) {
+        console.log(e);
         if (e.keyCode == 37) { // left
             that.go_to_previous_deal();
         } else if (e.keyCode == 39) { // right
             that.go_to_next_deal();
         } else if (e.keyCode == 38) { // up
             e.preventDefault();
-            that.enable_seatview = true;
-            that.display_seatview();
+            if (that.show_seatview == true) {
+                that.show_seatview = false;
+                that.remove_seatview();
+            } else {
+                that.show_seatview = true;
+                that.display_seatview();
+            }
         } else if (e.keyCode == 40) { // down
             e.preventDefault();
-            that.enable_seatview = false;
-            that.remove_seatview();
+            if (that.state_locked == true) return;
+            that.show_reverse = !that.show_reverse;
+            that.state = 'jump-to-section';
         } else if (e.keyCode == 13) { // enter
             that.remove_label();
             that.state = "oak";
@@ -358,7 +366,7 @@ World.prototype.build_stadium =  function () {
                 amount: Math.pow(distance/200, 3),
                 bevelEnabled: false
             });
-            THREE.GeometryUtils.merge(full_shape, geometry);
+            full_shape.merge(geometry);
         }
 
 
@@ -512,7 +520,7 @@ World.prototype.remove_label = function (fn) {
 World.prototype.display_seatview = function() {
     var that = this;
     this.remove_seatview(function() {
-        if (!that.enable_seatview) return;
+        if (!that.show_seatview) return;
         if (!that.selected_section.seatview) return;
         var geometry = new THREE.PlaneBufferGeometry( 6.4, 4.8, 5 );
         var split = that.selected_section.name.split('-');
@@ -626,7 +634,8 @@ World.prototype.handle_state = function(time) {
         var origin     = new THREE.Vector3(0,0,0),
             line       = new THREE.Line3(this.selected_section.position, origin),
             distance   = line.distance(),
-            camera_pos = line.at(10/distance);
+            distance_modifier = this.show_reverse ? 2 : 10,
+            camera_pos = line.at(distance_modifier/distance);
 
         camera_pos.setZ(this.selected_section.position.z + 3);
 
@@ -640,10 +649,18 @@ World.prototype.handle_state = function(time) {
                 that.state_locked = false;
             });
 
+        var y = Math.atan((that.selected_section.position.y - camera_pos.y)/(that.selected_section.position.x - camera_pos.x)) + Math.PI/2;
+
+        if (
+            (that.selected_section.position.x > 0 && !this.show_reverse) || 
+            (that.selected_section.position.x <= 0 && this.show_reverse)) {
+            y = y - Math.PI;
+        }
+
         new TWEEN.Tween(this.dolly.rotation)
             .to({
                 x: Math.PI/2,
-                y: Math.atan((that.selected_section.position.y - that.dolly.position.y)/(that.selected_section.position.x - that.dolly.position.x)) + Math.PI/2
+                y: y
             }, 1000)
             .easing( TWEEN.Easing.Cubic.InOut )
             .start();
