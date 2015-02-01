@@ -33,24 +33,9 @@
 
     this.gestures = [];
 
-    this.init = function() {
-      // this.el = document.createElement('div');
-      // this.el.className = 'sprite';
-      // document.body.appendChild(this.el);
-    };
-    this.init();
-
     this.frame = function(properties) {
       this.properties = properties;
-      this.setTransform();
       this.detectGestures();
-    };
-
-    this.setTransform = function() {
-      // var pos = this.properties.screenPosition();
-      // this.el.style.left = pos[0] - 10 + 'px';
-      // this.el.style.top  = pos[1] - 10 + 'px';
-      // this.el.style.transform = 'rotate(' + -this.properties.roll() + 'rad)';
     };
 
     // Detect intentional movements and interpet
@@ -142,7 +127,7 @@
       hand.frame(properties);
 
     });
-  }).use('screenPosition');
+  });
 
   controller.setBackground('true');
 

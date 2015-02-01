@@ -3,39 +3,42 @@
 var World = function() {};
 
 World.prototype.init = function() {
+    this.state = 'idle';
+
     this.renderer = this.init_renderer();
-    this.scene = this.init_scene();
-    this.camera = this.init_camera();
-    this.lights = this.init_lights();
+    this.scene    = this.init_scene();
+    this.camera   = this.init_camera();
+    this.lights   = this.init_lights();
+
     this.boids = new Boids();
     this.boids.init(this.scene);
     this.build_title();
 
     this.oak = new Oak();
-
     this.oak.init(this.scene);
 
-
-    this.vr_effect = new THREE.VREffect( this.renderer );
-    this.vr_controls = new THREE.VRControls( this.camera );
+    this.vr_effect     = new THREE.VREffect( this.renderer );
+    this.vr_controls   = new THREE.VRControls( this.camera );
     this.mono_controls = new THREE.OrbitControls( this.camera );
 
     this.change_mode("mono");
 
-    this.state = "start";
-    this.animation_speed = 1;
     this.animation_speed = 1.0;
 
     this.load_geo();
     this.load_listings();
 
     this.bind_events();
+
+    this.high_res = true; // render row-level data
     this.show_seatview = false;
+    this.show_reverse  = false;
     this.selected_seatview = null;
-    this.show_reverse = false;
+    this.selected_section_index = 1;
+
+    this.state = 'start';
 
     requestAnimationFrame(this.render.bind(this));
-
 };
 
 World.prototype.load_geo = function() {
@@ -65,6 +68,7 @@ World.prototype.process_mapdata = function() {
         return;
     }
     this.mapdata = {};
+    this.sorted_mapdata = [];
 
     var sections = this.geo_data.sections;
 
@@ -111,8 +115,15 @@ World.prototype.process_mapdata = function() {
     for (var seatview_name in this.listings_data.seatviews["2048"]) {
         if (this.mapdata[seatview_name]) {
             this.mapdata[seatview_name].seatview = this.listings_data.seatviews["2048"][seatview_name];
+            this.sorted_mapdata.push(this.mapdata[seatview_name]);
         }
     }
+
+    this.sorted_mapdata.sort(function(a, b) {
+        if (!b.max_dq) return -1;
+        if (!a.max_dq) return  1;
+        return b.max_dq - a.max_dq;
+    });
 
     this.build_stadium();
 };
@@ -153,8 +164,7 @@ function handle_fs_change(e) {
 
 World.prototype.bind_events = function() {
     var that = this;
-    this.selected_section_index = 1;
-    console.log('is this being called twice?');
+
     $(document).on('keypress', function(e) {
         console.log(e);
         if (e.keyCode == 37) { // left
@@ -229,19 +239,6 @@ World.prototype.init_scene = function() {
     var scene = new THREE.Scene({ fixedTimeStep: 1 / 120 });
     scene.fog = new THREE.Fog( 0xffffff, 1, 7000 );
     scene.fog.color.setHSL( 0.6, 0, 1 );
-
-    // var axisHelper = new THREE.AxisHelper( 10 );
-    // scene.add( axisHelper );
-    // var ground = new THREE.Mesh(new THREE.PlaneBufferGeometry( 500, 500, 100, 100 ), new THREE.MeshLambertMaterial({
-    //     ambient: 0xffffff,
-    //     color: 0xffffff,
-    //     // specular: 0x050505
-    // }));
-
-    // ground.receiveShadow = true;
-    // scene.add(ground);
-
-
     return scene;
 };
 
@@ -333,78 +330,62 @@ World.prototype.color_for_bucket = function(bucket) {
 };
 
 World.prototype.build_stadium =  function () {
+    var that = this;
     this.stadium_group = new THREE.Object3D();
-    this.sorted_mapdata = [];
-
-    var geometry = new THREE.PlaneBufferGeometry( 44, 44, 20 );
-    var url = "yankees_field.png";
-    var texture = THREE.ImageUtils.loadTexture( url );
-    var fieldMaterial = new THREE.MeshBasicMaterial( {map : texture, transparent: true} );
-
-    var plane = new THREE.Mesh( geometry, fieldMaterial );
-
-    plane.position.y = 7;
-
-    this.scene.add(plane);
-
-    this.state = 'idle';
 
     for (var section_name in this.mapdata) {
         var section = this.mapdata[section_name];
         var building_material = new THREE.MeshPhongMaterial({
-            color: this.color_for_bucket(section.type == 'section' ? section.max_dq_bucket : section.section.max_dq_bucket),
+            color: this.color_for_bucket(section.max_dq_bucket),
         });
 
-        var full_shape = new THREE.Geometry();
-        if (section.rows.length == 0) continue;
-        for (i in section.rows) {
-            var row = section.rows[i];
-            var row_shape = this.convert_shape(row.points);
-            var distance = Math.sqrt((this.geo_data.center[0] - row.center[0])*(this.geo_data.center[0] - row.center[0]) + (this.geo_data.center[1] - row.center[1])*(this.geo_data.center[1] - section.center[1]));
+        var full_shape,
+            distance = Math.sqrt((this.geo_data.center[0] - section.center[0])*(this.geo_data.center[0] - section.center[0]) + (this.geo_data.center[1] - section.center[1])*(this.geo_data.center[1] - section.center[1]));
 
-            var geometry = row_shape.extrude({
+        if (this.high_res) {
+            full_shape = new THREE.Geometry();
+            if (section.rows.length == 0) continue;
+            for (i in section.rows) {
+                var row = section.rows[i];
+                var row_shape = this.convert_shape(row.points);
+                var row_distance = Math.sqrt((this.geo_data.center[0] - row.center[0])*(this.geo_data.center[0] - row.center[0]) + (this.geo_data.center[1] - row.center[1])*(this.geo_data.center[1] - section.center[1]));
+
+                var geometry = row_shape.extrude({
+                    amount: Math.pow(row_distance/200, 3),
+                    bevelEnabled: false
+                });
+                full_shape.merge(geometry);
+            }
+        } else {
+            var shape = this.convert_shape(section.points);
+            full_shape = shape.extrude({
                 amount: Math.pow(distance/200, 3),
                 bevelEnabled: false
             });
-            full_shape.merge(geometry);
         }
 
-
-        var section_shape = this.convert_shape(section.points);
-
-        // object.position.z = this.mapdata[section_name].max_dq_bucket|| 0;
-        var distance = Math.sqrt((this.geo_data.center[0] - section.center[0])*(this.geo_data.center[0] - section.center[0]) + (this.geo_data.center[1] - section.center[1])*(this.geo_data.center[1] - section.center[1]))
-
-        // var geometry = shape
-        //   .extrude({
-        //     amount: Math.pow(distance/200, 3),
-        //     bevelEnabled: false
-        //   });
-
-        //var object = full_shape.toMesh(building_material);
         var object = new THREE.Mesh(full_shape, building_material);
-
-        // object.position.z = Math.pow(distance/100, 2);
-
-        section.position = object.position.clone();
-
-        section.position.x = (section.center[0] - 500)/10;
-        section.position.y = (500 - section.center[1])/10;
-        section.position.z = Math.pow(distance/200, 3);
         this.stadium_group.add(object);
 
+        section.position = new THREE.Vector3(
+            (section.center[0] - 500)/10,
+            (500 - section.center[1])/10,
+            Math.pow(distance/200, 3)
+        );
         section.object = object;
         section.name = section_name;
-        section.extrude = Math.pow(distance/200, 3);
-        if (section.seatview) this.sorted_mapdata.push(section);
     }
-    this.scene.add(this.stadium_group);
-    this.state = 'start';
 
-    this.sorted_mapdata.sort(function(a, b) {
-        if (!b.max_dq) return -1;
-        if (!a.max_dq) return  1;
-        return b.max_dq - a.max_dq;
+    var url = "yankees_field.png";
+    var texture = THREE.ImageUtils.loadTexture( url, null, function(tex) {
+        var fieldMaterial = new THREE.MeshBasicMaterial( {map : tex, transparent: true} );
+        var geometry = new THREE.PlaneBufferGeometry( 44, 44, 20 );
+        var plane = new THREE.Mesh( geometry, fieldMaterial );
+        plane.position.y = 7;
+        that.scene.add(plane);
+
+        that.scene.add(that.stadium_group);
+        that.state = 'start';
     });
 };
 
