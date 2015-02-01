@@ -10,6 +10,10 @@ World.prototype.init = function() {
     this.camera   = this.init_camera();
     this.lights   = this.init_lights();
 
+    this.raycaster   = new THREE.Raycaster();
+    this.intersected = null;
+    this.mouse = new THREE.Vector2();
+
     this.boids = new Boids();
     this.boids.init(this.scene);
     this.build_title();
@@ -115,6 +119,7 @@ World.prototype.process_mapdata = function() {
     for (var seatview_name in this.listings_data.seatviews["2048"]) {
         if (this.mapdata[seatview_name]) {
             this.mapdata[seatview_name].seatview = this.listings_data.seatviews["2048"][seatview_name];
+            this.mapdata[seatview_name].dq_index = this.sorted_mapdata.length;
             this.sorted_mapdata.push(this.mapdata[seatview_name]);
         }
     }
@@ -190,6 +195,26 @@ World.prototype.bind_events = function() {
             that.state = "oak";
         }
     });
+
+    $(document).on('mousemove', function(e) {
+        that.mouse.x =   ( e.clientX / window.innerWidth  ) * 2 - 1;
+        that.mouse.y = - ( e.clientY / window.innerHeight ) * 2 + 1;
+    });
+
+    $(document).on('click', function(e) {
+        if (that.state_locked == true) return;
+        console.log(that.intersected);
+        if (that.intersected) {
+            that.selected_section = that.mapdata[that.intersected.section_name];
+            that.state = 'jump-to-section';
+            // if (that.mapdata[that.intersected.section_name].dq_index) {
+            //     var index = that.mapdata[that.intersected.section_name].dq_index;
+            //     that.selected_section_index = index; // this is broken
+            //     that.state = 'jump-to-section';
+            // }
+        }
+    })
+
     gestures.bind('left', function() {
         that.go_to_previous_deal();
     });
@@ -373,6 +398,7 @@ World.prototype.build_stadium =  function () {
             Math.pow(distance/200, 3)
         );
         section.object = object;
+        section.object.section_name = section_name;
         section.name = section_name;
     }
 
@@ -417,6 +443,25 @@ World.prototype.render = function(time) {
     this.handle_state(time);
 
     this.boids.render();
+
+    if (this.stadium_group) {
+        this.raycaster.ray.origin.copy(this.dolly.position);
+        this.raycaster.ray.direction.set(this.mouse.x, this.mouse.y, 0.5).unproject(this.camera).sub(this.dolly.position).normalize();
+
+        var intersects = this.raycaster.intersectObjects( this.stadium_group.children );
+        if ( intersects.length > 0 ) {
+            if ( this.intersected != intersects[ 0 ].object ) {
+                if ( this.intersected ) this.intersected.material.emissive.setHex( this.intersected.currentHex );
+
+                this.intersected = intersects[ 0 ].object;
+                this.intersected.currentHex = this.intersected.material.emissive.getHex();
+                this.intersected.material.emissive.setHex( 0x0000ff );
+            }
+        } else {
+            if ( this.intersected ) this.intersected.material.emissive.setHex( this.intersected.currentHex );
+            this.intersected = null;
+        }
+    }
 
     this.effect.render( this.scene, this.camera );
 };
