@@ -696,13 +696,13 @@ World.prototype.handle_state = function(time) {
             camera_pos = line.at(distance_modifier/distance);
 
         camera_pos.setZ(this.selected_section.position.z + 3);
+        that.animate_selected_section(true);
 
         this.tween = new TWEEN.Tween(this.dolly.position)
             .to(camera_pos, 1000)
             .easing( TWEEN.Easing.Cubic.InOut )
             .start()
             .onComplete(function() {
-                that.animate_selected_section(true);
                 that.state = 'idle';
                 that.state_locked = false;
             });
@@ -773,24 +773,34 @@ World.prototype.animate_selected_section = function (restart) {
             this.hover_animation.stop();
         }
         if (this.hover_target) {
-            this.hover_target.position.z = this.hover_z;
+            new TWEEN.Tween(this.hover_target.position)
+                .to({ z: this.hover_z }, 500)
+                .easing( TWEEN.Easing.Cubic.InOut )
+                .start()
+                .onComplete(function() {
+                    that.hover_target = that.selected_section.object;
+                    that.hover_z = that.hover_target.position.z;
+                    that.animate_selected_section(false);
+                });
+            return;
+        } else {
+            this.hover_target = this.selected_section.object;
+            this.hover_z = this.hover_target.position.z;
         }
-        this.hover_target = this.selected_section.object;
-        this.hover_z = this.hover_target.position.z;
     }
-    this.hover_animation = new TWEEN.Tween(
-        this.hover_target.position
-    ).to({ z: this.hover_z + .5 }, 2000
-    ).easing( TWEEN.Easing.Cubic.InOut ).start()
-    .onComplete(function() {
-        that.hover_animation = new TWEEN.Tween(
-            that.hover_target.position
-        ).to({ z: that.hover_z - .5 }, 2000
-        ).easing( TWEEN.Easing.Quadratic.InOut ).start()
+    this.hover_animation = new TWEEN.Tween(this.hover_target.position)
+        .to({ z: this.hover_z + .5 }, 2200)
+        .easing( TWEEN.Easing.Cubic.InOut )
+        .start()
         .onComplete(function() {
-            that.animate_selected_section(false);
+            that.hover_animation = new TWEEN.Tween(that.hover_target.position)
+                .to({ z: that.hover_z - .5 }, 2200)
+                .easing( TWEEN.Easing.Cubic.InOut )
+                .start()
+                .onComplete(function() {
+                    that.animate_selected_section(false);
+                });
         });
-    });
 };
 
 
