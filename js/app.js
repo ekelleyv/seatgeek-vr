@@ -27,7 +27,7 @@ World.prototype.init = function() {
 
     this.change_mode("mono");
 
-    this.animation_speed = 1.0;
+    this.animation_speed = .1//.0;
 
     this.load_geo();
     this.load_listings();
@@ -39,6 +39,22 @@ World.prototype.init = function() {
     this.show_reverse  = false;
     this.selected_seatview = null;
     this.selected_section_index = 1;
+
+    this.direction = {
+        UP    : false,
+        DOWN  : false,
+        LEFT  : false,
+        RIGHT : false,
+        IN    : false,
+        OUT   : false
+    };
+    this.accel = {
+        x: 0,
+        y: 0,
+        z: 0
+    };
+    this.max_accel = 15;
+    this.accel_multiplier = .2;
 
     this.state = 'start';
 
@@ -207,22 +223,21 @@ World.prototype.bind_events = function() {
     // frame instead of whenever the hell the browser feels
     // like firing the event
     $(document).on('keydown', function(e) {
-        if (e.keyCode == 87) { // W / up
-            that.dolly.position.y += 3;
-        } else if (e.keyCode == 83) { // S / down
-            that.dolly.position.y -= 3;
-        }
-        if (e.keyCode == 65) { // A / left
-            that.dolly.position.x -= 3;
-        } else if (e.keyCode == 68) { // D / right
-            that.dolly.position.x += 3;
-        }
-        if (e.keyCode == 173) { // - / zoom out
-            that.dolly.position.z += 5;
-        } else if (e.keyCode == 61) { // + / zoom in
-            that.dolly.position.z -= 5;
-        }
-    })
+        if (e.keyCode == 87)  that.direction.UP    = true; // W / up
+        if (e.keyCode == 83)  that.direction.DOWN  = true; // S / down
+        if (e.keyCode == 65)  that.direction.LEFT  = true; // A / left
+        if (e.keyCode == 68)  that.direction.RIGHT = true; // D / right
+        if (e.keyCode == 173) that.direction.OUT   = true; // - / zoom out
+        if (e.keyCode == 61)  that.direction.IN    = true; // + / zoom in
+    });
+    $(document).on('keyup', function(e) {
+        if (e.keyCode == 87)  that.direction.UP    = false; // W / up
+        if (e.keyCode == 83)  that.direction.DOWN  = false; // S / down
+        if (e.keyCode == 65)  that.direction.LEFT  = false; // A / left
+        if (e.keyCode == 68)  that.direction.RIGHT = false; // D / right
+        if (e.keyCode == 173) that.direction.OUT   = false; // - / zoom out
+        if (e.keyCode == 61)  that.direction.IN    = false; // + / zoom in
+    });
 
     $(document).on('mousemove', function(e) {
         that.mouse.x =   ( e.clientX / window.innerWidth  ) * 2 - 1;
@@ -451,7 +466,45 @@ World.prototype.convert_shape = function (input_points) {
     var shape = new THREE.Shape();
     shape.fromPoints(pts);
     return shape;
-},
+};
+
+World.prototype.move_camera = function() {
+    if (this.direction.LEFT) {
+        this.accel.x --;
+    } else if (this.direction.RIGHT) {
+        this.accel.x ++;
+    } else {
+        if (this.accel.x > 0) this.accel.x --;
+        if (this.accel.x < 0) this.accel.x ++;
+    }
+    if (this.direction.DOWN) {
+        this.accel.y --;
+    } else if (this.direction.UP) {
+        this.accel.y ++;
+    } else {
+        if (this.accel.y > 0) this.accel.y --;
+        if (this.accel.y < 0) this.accel.y ++;
+    }
+    if (this.direction.IN) {
+        this.accel.z --;
+    } else if (this.direction.OUT) {
+        this.accel.z ++;
+    } else {
+        if (this.accel.z > 0) this.accel.z --;
+        if (this.accel.z < 0) this.accel.z ++;
+    }
+
+    if (this.accel.x >   this.max_accel) this.accel.x =   this.max_accel;
+    if (this.accel.x < - this.max_accel) this.accel.x = - this.max_accel;
+    if (this.accel.y >   this.max_accel) this.accel.y =   this.max_accel;
+    if (this.accel.y < - this.max_accel) this.accel.y = - this.max_accel;
+    if (this.accel.z >   this.max_accel) this.accel.z =   this.max_accel;
+    if (this.accel.z < - this.max_accel) this.accel.z = - this.max_accel;
+
+    this.dolly.position.x += this.accel.x * this.accel_multiplier;
+    this.dolly.position.y += this.accel.y * this.accel_multiplier;
+    this.dolly.position.z += this.accel.z * this.accel_multiplier;
+};
 
 
 ////////////////////////////////////////////
@@ -472,6 +525,11 @@ World.prototype.render = function(time) {
 
     this.boids.render();
 
+
+    // Move with WASD keys
+    this.move_camera();
+
+    // Mouse interactions
     if (this.stadium_group) {
         this.raycaster.ray.origin.copy(this.dolly.position);
         this.raycaster.ray.direction.set(this.mouse.x, this.mouse.y, 0.5).unproject(this.camera).sub(this.dolly.position).normalize();
@@ -675,7 +733,8 @@ World.prototype.handle_state = function(time) {
             .start()
             .onComplete(function() {
                 that.selected_section = that.sorted_mapdata[1];
-                that.state = "jump-to-section";
+                //that.state = "jump-to-section";
+                that.state = 'overhead-idle';
                 that.state_locked = false;
             });
     }
