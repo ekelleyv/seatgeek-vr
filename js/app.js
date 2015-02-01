@@ -203,6 +203,27 @@ World.prototype.bind_events = function() {
         }
     });
 
+    // TODO: Smooth this out, trigger it on the animation
+    // frame instead of whenever the hell the browser feels
+    // like firing the event
+    $(document).on('keydown', function(e) {
+        if (e.keyCode == 87) { // W / up
+            that.dolly.position.y += 3;
+        } else if (e.keyCode == 83) { // S / down
+            that.dolly.position.y -= 3;
+        }
+        if (e.keyCode == 65) { // A / left
+            that.dolly.position.x -= 3;
+        } else if (e.keyCode == 68) { // D / right
+            that.dolly.position.x += 3;
+        }
+        if (e.keyCode == 173) { // - / zoom out
+            that.dolly.position.z += 5;
+        } else if (e.keyCode == 61) { // + / zoom in
+            that.dolly.position.z -= 5;
+        }
+    })
+
     $(document).on('mousemove', function(e) {
         that.mouse.x =   ( e.clientX / window.innerWidth  ) * 2 - 1;
         that.mouse.y = - ( e.clientY / window.innerHeight ) * 2 + 1;
